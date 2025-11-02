@@ -106,3 +106,70 @@ db.connect()
       res.redirect('/register');
     }
   });
+
+
+
+
+
+  //render login
+  app.get('/login', (req, res) => {
+    res.render('pages/login');
+  });
+
+  //login func
+  app.post('/login', async (req, res) => {
+    //make sure that form isnt empty
+    if (!req.body.username || !req.body.password) {
+        return res.redirect('/login');
+    }
+    try {
+        //get username from database
+        const user = await db.oneOrNone('SELECT * FROM users WHERE users.username = $1', [
+        req.body.username,
+        ]);
+
+        //see if a user was returned
+        if (!user) {
+            return res.redirect('/register');
+        }
+
+        // check if password from request matches with password in DB
+        const match = await bcrypt.compare(req.body.password, user.password);
+
+        //get mod status
+        const userRole = user.role;
+
+        //passwords match and user is not a mod
+        if(match & userRole == 'user')
+        {
+            //save user details in session 
+            req.session.user = user;
+            req.session.modTag = false
+            req.session.save(() =>{
+                res.redirect('/home')
+            });
+        }
+        else if(match & userRole == 'moderator')
+        {
+            //save user details in session 
+            req.session.user = user;
+            req.session.modTag = true;
+            req.session.save(() =>{
+                res.redirect('/modHome')
+            });
+        }
+        //passwords dont match
+        else
+        {
+        res.render('pages/login', {
+        message: 'Incorrect username or password'
+        });
+        }
+        
+    } catch (err) {
+        console.error(err);
+
+        // Redirect back to register page if there’s an error
+        res.redirect('/register');
+    }
+  });
