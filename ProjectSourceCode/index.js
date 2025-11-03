@@ -73,13 +73,17 @@ db.connect()
   // *****************************************************
   // <!-- API Routes -->
   // *****************************************************
+  app.get('/', (req,res) =>{
+    res.render('pages/home', { showAuthButtons: true, hideNav: true});
+  });
+
 
   app.get('/', (req,res) =>{
     res.render('pages/home', { showAuthButtons: true, hideNav: true});
   });
 
   app.get('/register', (req, res) => {
-    res.render('pages/register');
+    res.render('pages/register', { hideNav: true});
   });
   
   // Register
@@ -113,7 +117,7 @@ db.connect()
 
   //render login
   app.get('/login', (req, res) => {
-    res.render('pages/login');
+    res.render('pages/login', { hideNav: true});
   });
 
   //login func
