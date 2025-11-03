@@ -107,10 +107,6 @@ db.connect()
     }
   });
 
-
-
-
-
   //render login
   app.get('/login', (req, res) => {
     res.render('pages/login');
@@ -173,3 +169,10 @@ db.connect()
         res.redirect('/register');
     }
   });
+
+// *****************************************************
+// <!-- Start Server-->
+// *****************************************************
+// starting the server and keeping the connection open to listen for more requests
+app.listen(3000);
+console.log('Server is listening on port 3000');
