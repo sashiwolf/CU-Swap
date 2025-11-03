@@ -199,20 +199,32 @@ app.get('/logout', (req, res) => {
 // Delete a review
 app.delete('/api/delete-review/:id', async (req, res) => {
   const review_id = req.params.id;
-  const user_id = req.session.user?.user_id;
+  const user = req.session.user;
+
+  if (!user) {
+    return res.status(401).json({ error: 'You must be logged in to delete a review.' });
+  }
 
   try {
-    // Check if the review belongs to the logged-in user
+    // Check if the logged-in user is a moderator
+    if (user.role === 'moderator') {
+      // Mods can delete ANY review
+      await db.none('DELETE FROM reviews_to_user WHERE review_id = $1', [review_id]);
+      await db.none('DELETE FROM reviews WHERE review_id = $1', [review_id]);
+      return res.status(200).json({ message: 'Moderator deleted the review successfully.' });
+    }
+
+    // Otherwise, ensure the user owns the review
     const ownsReview = await db.oneOrNone(
       'SELECT 1 FROM reviews_to_user WHERE review_id = $1 AND user_id = $2',
-      [review_id, user_id]
+      [review_id, user.user_id]
     );
 
     if (!ownsReview) {
       return res.status(403).json({ error: 'You do not have permission to delete this review.' });
     }
 
-    // Delete the review and its relations
+    // Delete the review for regular user
     await db.none('DELETE FROM reviews_to_user WHERE review_id = $1', [review_id]);
     await db.none('DELETE FROM reviews WHERE review_id = $1', [review_id]);
 
