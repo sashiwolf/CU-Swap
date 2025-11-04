@@ -1,0 +1,50 @@
+<style>
+  .cu-nav {
+  background: #000;              /* black bar */
+}
+
+.cu-nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between; /* evenly spaced */
+  align-items: center;
+  height: 52px;
+}
+
+/* NAV BUTTONS */
+.cu-nav-link {
+  font-family: "Bobby Jones", serif;
+  color: #fff;
+  text-decoration: none;
+  font-size: 1.1rem;
+  padding: 10px 18px;
+
+  /* white vertical lines only */
+  border-left: 1px solid #fff;
+  border-right: 1px solid #fff;
+}
+
+/* No hover color changes */
+.cu-nav-link:hover,
+.cu-nav-link:focus {
+  text-decoration: none;
+}
+
+.site-nav{
+  background: #000;
+  border-top: 3px solid #d49c0e; /* gold separator */
+}
+</style>
+
+<nav class="cu-nav site-nav">
+  <ul class="cu-nav-list">
+    <li><a href="/home" class="cu-nav-link">Home</a></li>
+    <li><a href="/discover" class="cu-nav-link">Discover</a></li>
+    <li><a href="/my-listings" class="cu-nav-link">My Listing</a></li>
+    <li><a href="/my-reviews" class="cu-nav-link">My Reviews</a></li>
+    <li><a href="/profile" class="cu-nav-link">Profile</a></li>
+    <li><a href="/logout" class="cu-nav-link">Logout</a></li>
+  </ul>
+</nav>
