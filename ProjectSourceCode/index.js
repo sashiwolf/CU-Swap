@@ -102,7 +102,7 @@ db.connect()
         req.body.username,
         hash,
         req.body.email,
-        req.body.phone
+        req.body.Phone
       ]);
       
   
