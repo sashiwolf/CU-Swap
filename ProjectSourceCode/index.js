@@ -96,13 +96,15 @@ db.connect()
     try {
       //hash the password using bcrypt library
       const hash = await bcrypt.hash(req.body.password, 10);
-  
+      
       // To-DO: Insert username and hashed password into the 'users' table
-      await db.none('INSERT INTO users (username, password) VALUES ($1, $2)', [
+      await db.none('INSERT INTO users (username, password, email, phone_num) VALUES ($1, $2, $3, $4)', [
         req.body.username,
-        hash
+        hash,
+        req.body.email,
+        req.body.phone
       ]);
-  
+      
   
       // Redirect to login page after successful registration6
       res.redirect('/login');
@@ -114,6 +116,13 @@ db.connect()
     }
   });
 
+
+
+
+
+
+
+
   //render login
   app.get('/login', (req, res) => {
     res.render('pages/login', { hideNav: true});
@@ -122,13 +131,13 @@ db.connect()
   //login func
   app.post('/login', async (req, res) => {
     //make sure that form isnt empty
-    if (!req.body.username || !req.body.password) {
-        return res.redirect('/login');
+    if (!req.body.email || !req.body.password) {
+        return res.redirect('/login;');
     }
     try {
         //get username from database
-        const user = await db.oneOrNone('SELECT * FROM users WHERE users.username = $1', [
-        req.body.username,
+        const user = await db.oneOrNone('SELECT * FROM users WHERE email = $1', [
+        req.body.email,
         ]);
 
         //see if a user was returned
@@ -143,16 +152,16 @@ db.connect()
         const userRole = user.role;
 
         //passwords match and user is not a mod
-        if(match & userRole == 'user')
+        if(match && userRole == 'user')
         {
             //save user details in session 
             req.session.user = user;
             req.session.modTag = false
             req.session.save(() =>{
-                res.redirect('/home')
+                res.redirect('/discover')
             });
         }
-        else if(match & userRole == 'moderator')
+        else if(match && userRole == 'moderator')
         {
             //save user details in session 
             req.session.user = user;
