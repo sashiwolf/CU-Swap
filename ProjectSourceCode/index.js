@@ -77,11 +77,6 @@ db.connect()
     res.render('pages/home', { showAuthButtons: true, hideNav: true});
   });
 
-
-  app.get('/', (req,res) =>{
-    res.render('pages/home', { showAuthButtons: true, hideNav: true});
-  });
-
   app.get('/register', (req, res) => {
     res.render('pages/register', { hideNav: true});
   });
@@ -178,6 +173,67 @@ db.connect()
     }
   });
 
+// Authentication Middleware.
+const auth = (req, res, next) => {
+  if (!req.session.user) {
+    // Default to login page.
+    return res.redirect('/login');
+  }
+  next();
+};
+
+// Authentication Required
+app.use(auth);
+
+// Logout
+app.get('/logout', (req, res) => {
+  req.session.destroy(err => {
+    if (err) {
+      console.error(err);
+      return res.render('pages/logout', { message: 'Error logging out. Please try again.' });
+    }
+    res.render('pages/logout', { message: 'Logged out Successfully' });
+  });
+});
+
+// Delete a review
+app.delete('/api/delete-review/:id', async (req, res) => {
+  const review_id = req.params.id;
+  const user = req.session.user;
+
+  if (!user) {
+    return res.status(401).json({ error: 'You must be logged in to delete a review.' });
+  }
+
+  try {
+    // Check if the logged-in user is a moderator
+    if (user.role === 'moderator') {
+      // Mods can delete ANY review
+      await db.none('DELETE FROM reviews_to_user WHERE review_id = $1', [review_id]);
+      await db.none('DELETE FROM reviews WHERE review_id = $1', [review_id]);
+      return res.status(200).json({ message: 'Moderator deleted the review successfully.' });
+    }
+
+    // Otherwise, ensure the user owns the review
+    const ownsReview = await db.oneOrNone(
+      'SELECT 1 FROM reviews_to_user WHERE review_id = $1 AND user_id = $2',
+      [review_id, user.user_id]
+    );
+
+    if (!ownsReview) {
+      return res.status(403).json({ error: 'You do not have permission to delete this review.' });
+    }
+
+    // Delete the review for regular user
+    await db.none('DELETE FROM reviews_to_user WHERE review_id = $1', [review_id]);
+    await db.none('DELETE FROM reviews WHERE review_id = $1', [review_id]);
+
+    res.status(200).json({ message: 'Review deleted successfully.' });
+  } catch (err) {
+    console.error('Error deleting review:', err);
+    res.status(500).json({ error: 'Failed to delete review.' });
+  }
+});
   app.post('/leave_review', async (req, res) => {
     try{
       //insert review
