@@ -1,0 +1,93 @@
+<style>
+    :root { --gold:#cfb87c; --black:#000; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Inter, Arial, sans-serif;
+    background: #fff; /* white background */
+    color: #000;
+  }
+
+      /* Login card: subtle glass look over white for consistency */
+  .login-card {
+    background: rgba(0,0,0,0.04);
+    border: 1px solid rgba(0,0,0,0.08);
+    backdrop-filter: blur(2px);
+  }
+
+  /* Inputs */
+  .form-control:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 .2rem rgba(207,184,124,.25);
+  }
+
+  /* Submit button */
+  .btn-submit {
+    background: var(--black);
+    color: #fff;
+    border-radius: 999px;
+    border: none;
+    transition: .2s ease;
+  }
+  .btn-submit:hover {
+    background: var(--gold);
+    color: var(--black);
+  }
+
+  /* helper links */
+  a.link-dark:hover { color: var(--gold) !important; }
+</style>
+
+
+ <main class="flex-grow-1 d-flex align-items-center">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-11 col-sm-8 col-md-6 col-lg-5 col-xl-4">
+          <div class="login-card rounded-4 shadow p-4 p-md-5">
+            <h1 class="h2 fw-bold text-center mb-4" style="font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif; font-size: 50px;">Register</h1>
+
+            <form action="/register" method="POST" novalidate>
+              <div class="mb-3">
+                <label for="email" class="form-label fw-semibold">Email</label>
+                <input type="email" class="form-control" id="email" name="email"
+                       placeholder="abcd1234@colorado.edu" required>
+              </div>
+
+              <div class="mb-3">
+                <label for="username" class="form-label fw-semibold">Username</label>
+                <input type="text" class="form-control" id="username" name="username"
+                       placeholder="Username" required>
+              </div>
+
+              <div class="mb-3">
+                <label for="Phone" class="form-label fw-semibold">Phone</label>
+                <input type="tel" class="form-control" id="Phone" name="Phone"
+                       placeholder="+00 00 000 0000" inputmode="tel" required>
+                <div class="invalid-feedback" id="phoneError">Please enter a valid phone number.</div>
+                <input type="hidden" id="phone_e164" name="phone_e164">
+              </div>
+
+              <div class="mb-2">
+                <label for="password" class="form-label fw-semibold">Password</label>
+                <div class="input-group">
+                  <input type="password" class="form-control" id="password" name="password"
+                         placeholder="Enter your password" required>
+                  <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                    <span class="bi" id="eye">Show</span>
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-submit w-100 py-2 fw-semibold">Register</button>
+            </form>
+
+            <p class="text-center mt-3 mb-0">
+              Already have an account?
+              <a href="/login" class="link-dark text-decoration-none fw-semibold">Login!</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>

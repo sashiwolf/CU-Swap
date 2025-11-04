@@ -69,6 +69,10 @@ db.connect()
       extended: true,
     })
   );
+
+  // Serve static assets (For the images)
+  app.use('/images', express.static(path.join(__dirname, 'src', 'views', 'Images'))); 
+
   
   // *****************************************************
   // <!-- API Routes -->
