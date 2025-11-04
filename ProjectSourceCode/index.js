@@ -96,13 +96,15 @@ db.connect()
     try {
       //hash the password using bcrypt library
       const hash = await bcrypt.hash(req.body.password, 10);
-  
+      
       // To-DO: Insert username and hashed password into the 'users' table
-      await db.none('INSERT INTO users (username, password) VALUES ($1, $2)', [
+      await db.none('INSERT INTO users (username, password, email, phone_num) VALUES ($1, $2, $3, $4)', [
         req.body.username,
-        hash
+        hash,
+        req.body.email,
+        req.body.phone
       ]);
-  
+      
   
       // Redirect to login page after successful registration6
       res.redirect('/login');
@@ -113,6 +115,13 @@ db.connect()
       res.redirect('/register');
     }
   });
+
+
+
+
+
+
+
 
   //render login
   app.get('/login', (req, res) => {
