@@ -173,17 +173,17 @@ db.connect()
     }
   });
 
-// Authentication Middleware.
-const auth = (req, res, next) => {
-  if (!req.session.user) {
-    // Default to login page.
-    return res.redirect('/login');
-  }
-  next();
-};
+// // Authentication Middleware.
+// const auth = (req, res, next) => {
+//   if (!req.session.user) {
+//     // Default to login page.
+//     return res.redirect('/login');
+//   }
+//   next();
+// };
 
-// Authentication Required
-app.use(auth);
+// // Authentication Required
+// app.use(auth);
 
 // Logout
 app.get('/logout', (req, res) => {
@@ -196,8 +196,36 @@ app.get('/logout', (req, res) => {
   });
 });
 
+// My Reviews page
+app.get('/my-reviews', async (req, res) => {
+  try {
+    const userId = req.session.user.user_id;
+    const reviews = await db.any(`
+      SELECT r.review_id, r.content, r.rating
+      FROM reviews r
+      JOIN reviews_to_user ru ON r.review_id = ru.review_id
+      WHERE ru.user_id = $1
+      ORDER BY r.review_id DESC
+    `, [userId]);
+
+    res.render('pages/my-reviews', {
+      layout: 'main',
+      title: 'My Reviews',
+      reviews
+    });
+  } catch (err) {
+    console.error('Error loading reviews:', err);
+    res.render('pages/my-reviews', {
+      layout: 'main',
+      title: 'My Reviews',
+      reviews: [],
+      message: 'Could not load your reviews.'
+    });
+  }
+});
+
 // Delete a review
-app.delete('/api/delete-review/:id', async (req, res) => {
+app.delete('/delete-review/:id', async (req, res) => {
   const review_id = req.params.id;
   const user = req.session.user;
 
