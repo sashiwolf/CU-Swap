@@ -178,6 +178,31 @@ db.connect()
     }
   });
 
+  app.post('/leave_review', async (req, res) => {
+    try{
+      //insert review
+      const reviewResult = await client.query(
+      'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING id',
+      [req.body.rating, req.body.review]
+    );
+    
+      const reviewId = reviewResult.rows[0].id;
+      await client.query(
+        'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
+      [reviewId, req.body.user_id]
+    );
+
+    }
+
+    catch (err) {
+        console.error(err);
+
+        // Redirect back to listing page if there’s an error
+        res.redirect('/listings');
+    }
+    
+  });
+
 // *****************************************************
 // <!-- Start Server-->
 // *****************************************************
