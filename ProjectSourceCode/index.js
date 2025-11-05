@@ -90,7 +90,7 @@ db.connect()
   
     // Check if username or password is empty
     if (!req.body.username || !req.body.password) {
-      return res.redirect('/register');
+      return res.status(400).render('pages/register', { error: true, message: 'Please provide a email and password', hideNav: true});
     }
   
     try {
@@ -106,13 +106,13 @@ db.connect()
       ]);
       
   
-      // Redirect to login page after successful registration6
-      res.redirect('/login');
+      // Redirect to login page after successful registration
+      res.status(200).render('pages/login', {error: false, message: "Successfully Registered!", hideNav: true});
     } catch (err) {
       console.error(err);
   
       // Redirect back to register page if there’s an error
-      res.redirect('/register');
+      res.status(400).render('pages/register', {error: true, message: "Account already exists, try login", hideNav: true});
     }
   });
 
@@ -132,7 +132,7 @@ db.connect()
   app.post('/login', async (req, res) => {
     //make sure that form isnt empty
     if (!req.body.email || !req.body.password) {
-        return res.redirect('/login;');
+        return res.status(400).render('pages/login', {error: true, message: "Please enter an email and password", hideNav: true});
     }
     try {
         //get username from database
@@ -142,7 +142,7 @@ db.connect()
 
         //see if a user was returned
         if (!user) {
-            return res.redirect('/register');
+            return res.status(400).render('pages/register', {error: true, message: "User does not exist.", hideNav: true});
         }
 
         // check if password from request matches with password in DB
@@ -173,16 +173,14 @@ db.connect()
         //passwords dont match
         else
         {
-        res.render('pages/login', {
-        message: 'Incorrect username or password'
-        });
+        res.status(400).render('pages/login', {error: true, message: 'Incorrect username or password', hideNav: true});
         }
         
     } catch (err) {
         console.error(err);
 
         // Redirect back to register page if there’s an error
-        res.redirect('/register');
+        res.status(400).render('pages/register', {error: true, message: "There was an error with login, please register", hideNav: true});
     }
   });
 
@@ -203,9 +201,9 @@ app.get('/logout', (req, res) => {
   req.session.destroy(err => {
     if (err) {
       console.error(err);
-      return res.render('pages/logout', { message: 'Error logging out. Please try again.' });
+      return res.render('pages/logout', {error: true, message: 'Error logging out. Please try again.' });
     }
-    res.render('pages/logout', { message: 'Logged out Successfully' });
+    res.render('pages/logout', {error: false, message: 'Logged out Successfully' });
   });
 });
 
@@ -243,7 +241,7 @@ app.delete('/delete-review/:id', async (req, res) => {
   const user = req.session.user;
 
   if (!user) {
-    return res.status(401).json({ error: 'You must be logged in to delete a review.' });
+    return res.status(401).json({error: true, message: 'You must be logged in to delete a review.' });
   }
 
   try {
