@@ -95,8 +95,8 @@ db.connect()
   app.post('/register', async (req, res) => {
   
     // Check if username or password is empty
-    if (!req.body.username || !req.body.password) {
-      return res.status(400).render('pages/register', { error: true, message: 'Please provide a email and password', hideNav: true});
+    if (!req.body.username || !req.body.password || !req.body.email || !req.body.Phone) {
+      return res.redirect(302, '/register');
     }
   
     try {
@@ -113,12 +113,12 @@ db.connect()
       
   
       // Redirect to login page after successful registration
-      res.status(200).render('pages/login', {error: false, message: "Successfully Registered!", hideNav: true});
+      res.redirect(302, '/login');
     } catch (err) {
       console.error(err);
   
       // Redirect back to register page if there’s an error
-      res.status(400).render('pages/register', {error: true, message: "Account already exists, try login", hideNav: true});
+      res.redirect(302, '/register');
     }
   });
 
