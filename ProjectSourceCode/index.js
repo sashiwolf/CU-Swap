@@ -77,6 +77,12 @@ db.connect()
   // *****************************************************
   // <!-- API Routes -->
   // *****************************************************
+
+  // Dummy API Route for lab 10
+  app.get('/welcome', (req, res) => {
+    res.json({status: 'success', message: 'Welcome!'});
+  });
+
   app.get('/', (req,res) =>{
     res.render('pages/home', { showAuthButtons: true, hideNav: true});
   });
@@ -115,13 +121,6 @@ db.connect()
       res.status(400).render('pages/register', {error: true, message: "Account already exists, try login", hideNav: true});
     }
   });
-
-
-
-
-
-
-
 
   //render login
   app.get('/login', (req, res) => {
@@ -302,5 +301,5 @@ app.delete('/delete-review/:id', async (req, res) => {
 // <!-- Start Server-->
 // *****************************************************
 // starting the server and keeping the connection open to listen for more requests
-app.listen(3000);
+module.exports = app.listen(3000);
 console.log('Server is listening on port 3000');
