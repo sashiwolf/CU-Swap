@@ -30,3 +30,44 @@ describe('Server!', () => {
 // *********************** TODO: WRITE 2 UNIT TESTCASES **************************
 
 // ********************************************************************************
+
+// Positive + Negative tests for /register
+describe('Register', () => {
+  it('Positive: creates user and redirects to /login', done => {
+    const uniq = Date.now(); // avoid UNIQUE email clashes between runs
+    chai
+      .request(server)
+      .post('/register')
+      .redirects(0) // don't follow the redirect
+      .send({
+        username: 'testinguser' + uniq,
+        password: 'test123',
+        email: `test${uniq}@colorado.edu`,
+        Phone: '1111111111', 
+      })
+      .end((err, res) => {
+        expect(res).to.have.status(302);
+        expect(res).to.have.header('location', '/login');
+        done();
+      });
+  });
+
+  it('Negative: missing password redirects back to /register', done => {
+    const uniq = Date.now();
+    chai
+      .request(server)
+      .post('/register')
+      .redirects(0)
+      .send({
+        username: 'baduser' + uniq,
+        // password missing
+        email: `bad${uniq}@colorado.edu`,
+        Phone: '1111111111',
+      })
+      .end((err, res) => {
+        expect(res).to.have.status(302);
+        expect(res).to.have.header('location', '/register');
+        done();
+      });
+  });
+});
