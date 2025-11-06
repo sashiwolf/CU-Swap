@@ -91,36 +91,37 @@ db.connect()
     res.render('pages/register', { hideNav: true});
   });
   
-  // Register
-  app.post('/register', async (req, res) => {
-  
-    // Check if username or password is empty
-    if (!req.body.username || !req.body.password || !req.body.email || !req.body.Phone) {
-      return res.redirect(302, '/register');
-    }
-  
-    try {
-      //hash the password using bcrypt library
-      const hash = await bcrypt.hash(req.body.password, 10);
-      
-      // To-DO: Insert username and hashed password into the 'users' table
-      await db.none('INSERT INTO users (username, password, email, phone_num) VALUES ($1, $2, $3, $4)', [
-        req.body.username,
-        hash,
-        req.body.email,
-        req.body.Phone
-      ]);
-      
-  
-      // Redirect to login page after successful registration
-      res.redirect(302, '/login');
-    } catch (err) {
-      console.error(err);
-  
-      // Redirect back to register page if there’s an error
-      res.redirect(302, '/register');
-    }
-  });
+// Register
+app.post('/register', async (req, res) => {
+  // accept any of these keys for phone (form/tests can vary)
+  const phone =
+    req.body.phone ??
+    req.body.phone_num ??
+    req.body.Phone ?? null;
+
+  // required fields
+  if (!req.body.username || !req.body.password || !req.body.email || !phone) {
+    return res.redirect(302, '/register');
+  }
+
+  try {
+    // hash the password using bcrypt
+    const hash = await bcrypt.hash(req.body.password, 10);
+
+    // Insert user
+    await db.none(
+      'INSERT INTO users (username, password, email, phone_num) VALUES ($1, $2, $3, $4)',
+      [req.body.username, hash, req.body.email, phone]
+    );
+
+    // Success → login
+    return res.redirect(302, '/login');
+  } catch (err) {
+    console.error(err);
+    // For tests, just redirect back to register on any error
+    return res.redirect(302, '/register');
+  }
+});
 
   //render login
   app.get('/login', (req, res) => {
@@ -183,17 +184,17 @@ db.connect()
     }
   });
 
-// // Authentication Middleware.
-// const auth = (req, res, next) => {
-//   if (!req.session.user) {
-//     // Default to login page.
-//     return res.redirect('/login');
-//   }
-//   next();
-// };
+// Authentication Middleware.
+const auth = (req, res, next) => {
+  if (!req.session.user) {
+    // Default to login page.
+    return res.redirect('/login');
+  }
+  next();
+};
 
-// // Authentication Required
-// app.use(auth);
+// Authentication Required
+app.use(auth);
 
 // Logout
 app.get('/logout', (req, res) => {
@@ -209,14 +210,27 @@ app.get('/logout', (req, res) => {
 // My Reviews page
 app.get('/my-reviews', async (req, res) => {
   try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
     const userId = req.session.user.user_id;
-    const reviews = await db.any(`
-      SELECT r.review_id, r.content, r.rating
+
+    const reviews = await db.any(
+      `
+      SELECT 
+        r.review_id,
+        r.actual_review AS content,
+        r.rating,
+        reviewee.username AS reviewee_username
       FROM reviews r
-      JOIN reviews_to_user ru ON r.review_id = ru.review_id
-      WHERE ru.user_id = $1
+      JOIN reviews_to_user ru      ON ru.review_id = r.review_id
+      JOIN users reviewee          ON reviewee.user_id = ru.reviewee_id
+      WHERE ru.reviewer_id = $1
       ORDER BY r.review_id DESC
-    `, [userId]);
+      `,
+      [userId]
+    );
 
     res.render('pages/my-reviews', {
       layout: 'main',
@@ -240,21 +254,20 @@ app.delete('/delete-review/:id', async (req, res) => {
   const user = req.session.user;
 
   if (!user) {
-    return res.status(401).json({error: true, message: 'You must be logged in to delete a review.' });
+    return res.status(401).json({ error: true, message: 'You must be logged in to delete a review.' });
   }
 
   try {
-    // Check if the logged-in user is a moderator
+    // Moderators can delete any review
     if (user.role === 'moderator') {
-      // Mods can delete ANY review
       await db.none('DELETE FROM reviews_to_user WHERE review_id = $1', [review_id]);
       await db.none('DELETE FROM reviews WHERE review_id = $1', [review_id]);
       return res.status(200).json({ message: 'Moderator deleted the review successfully.' });
     }
 
-    // Otherwise, ensure the user owns the review
+    // Ensure the logged-in user is the reviewer (author)
     const ownsReview = await db.oneOrNone(
-      'SELECT 1 FROM reviews_to_user WHERE review_id = $1 AND user_id = $2',
+      'SELECT 1 FROM reviews_to_user WHERE review_id = $1 AND reviewer_id = $2',
       [review_id, user.user_id]
     );
 
@@ -262,7 +275,6 @@ app.delete('/delete-review/:id', async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission to delete this review.' });
     }
 
-    // Delete the review for regular user
     await db.none('DELETE FROM reviews_to_user WHERE review_id = $1', [review_id]);
     await db.none('DELETE FROM reviews WHERE review_id = $1', [review_id]);
 
@@ -272,6 +284,8 @@ app.delete('/delete-review/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete review.' });
   }
 });
+
+
   app.post('/leave_review', async (req, res) => {
     try{
       //insert review

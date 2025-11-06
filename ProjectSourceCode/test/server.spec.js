@@ -43,7 +43,7 @@ describe('Register', () => {
         username: 'testinguser' + uniq,
         password: 'test123',
         email: `test${uniq}@colorado.edu`,
-        Phone: '1111111111', 
+        Phone: '9990000001', 
       })
       .end((err, res) => {
         expect(res).to.have.status(302);
@@ -62,7 +62,7 @@ describe('Register', () => {
         username: 'baduser' + uniq,
         // password missing
         email: `bad${uniq}@colorado.edu`,
-        Phone: '1111111111',
+        Phone: '9990000001',
       })
       .end((err, res) => {
         expect(res).to.have.status(302);
