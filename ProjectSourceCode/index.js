@@ -183,17 +183,17 @@ db.connect()
     }
   });
 
-// // Authentication Middleware.
-// const auth = (req, res, next) => {
-//   if (!req.session.user) {
-//     // Default to login page.
-//     return res.redirect('/login');
-//   }
-//   next();
-// };
+// Authentication Middleware.
+const auth = (req, res, next) => {
+   if (!req.session.user) {
+     // Default to login page.
+     return res.redirect('/login');
+   }
+   next();
+ };
 
 // // Authentication Required
-// app.use(auth);
+ app.use(auth);
 
 // Logout
 app.get('/logout', (req, res) => {
@@ -272,30 +272,45 @@ app.delete('/delete-review/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete review.' });
   }
 });
-  app.post('/leave_review', async (req, res) => {
-    try{
-      //insert review
-      const reviewResult = await client.query(
-      'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING id',
+
+
+
+
+app.get('/leave_review', (req, res) => {
+  console.log('Session Data:', req.session);
+  res.render('pages/leave_review', { hideNav: true });
+});
+
+
+app.post('/leave_review', async (req, res) => {
+  console.log("calling api");
+  try {
+    // Insert review and return review_id
+    const reviewResult = await client.query(
+      'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING review_id',
       [req.body.rating, req.body.review]
     );
-    
-      const reviewId = reviewResult.rows[0].id;
-      await client.query(
-        'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
-      [reviewId, req.body.user_id]
+    res.redirect('/success');
+    /*
+    // Get the userID for the provided username
+    const userID = await client.oneOrNone(
+      'SELECT user_id FROM users WHERE username = $1',
+      [req.body.username]
     );
 
-    }
+    // Insert into linker table
+    const reviewId = reviewResult.rows[0].review_id; 
+    await client.query(
+      'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
+      [reviewId, userID.user_id] 
+    );
 
-    catch (err) {
-        console.error(err);
+    res.send("Review added successfully"); */
+  } catch (error) {
+    res.redirect('/error')
+  }
+});
 
-        // Redirect back to listing page if there’s an error
-        res.redirect('/listings');
-    }
-    
-  });
 
 // *****************************************************
 // <!-- Start Server-->
