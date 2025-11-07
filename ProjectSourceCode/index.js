@@ -12,7 +12,8 @@ const bodyParser = require('body-parser');
 const session = require('express-session'); // To set the session object. To store or access session data, use the `req.session`, which is (generally) serialized as JSON by the store
 const bcrypt = require('bcryptjs'); //  To hash passwords
 const axios = require('axios'); // To make HTTP requests from our server
-
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 // *****************************************************
 // <!-- Connect to DB -->
 // *****************************************************
@@ -183,6 +184,9 @@ db.connect()
     }
   });
 
+
+
+
 // Authentication Middleware.
 const auth = (req, res, next) => {
    if (!req.session.user) {
@@ -283,33 +287,41 @@ app.get('/leave_review', (req, res) => {
 
 
 app.post('/leave_review', async (req, res) => {
-  console.log("calling api");
+  const { rating, review, username } = req.body;
   try {
-    // Insert review and return review_id
+    // Insert review into reviews table
     const reviewResult = await client.query(
       'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING review_id',
-      [req.body.rating, req.body.review]
+      [rating, review]
     );
-    res.redirect('/success');
-    /*
-    // Get the userID for the provided username
+    
+    // Get user_id for the provided username
     const userID = await client.oneOrNone(
       'SELECT user_id FROM users WHERE username = $1',
-      [req.body.username]
+      [username]
     );
 
-    // Insert into linker table
-    const reviewId = reviewResult.rows[0].review_id; 
+    if (!userID) {
+      return res.status(400).send("User not found");
+    }
+
+    // Insert into reviews_to_user linker table
+    const reviewId = reviewResult.rows[0].review_id;
     await client.query(
       'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
-      [reviewId, userID.user_id] 
+      [reviewId, userID.user_id]
     );
 
-    res.send("Review added successfully"); */
+    res.redirect('/success'); // Redirect to a success page*/
   } catch (error) {
-    res.redirect('/error')
-  }
+    console.error("Error occurred while inserting review:", error);
+    res.redirect('/error'); // Redirect to an error page
+  } 
 });
+
+
+
+
 
 
 // *****************************************************
