@@ -71,8 +71,9 @@ db.connect()
     })
   );
 
-  // Serve static assets (For the images)
+  // Serve static assets
   app.use('/images', express.static(path.join(__dirname, 'src', 'views', 'Images'))); 
+  app.use('/js', express.static(path.join(__dirname, 'src', 'resources', 'js'))); // exposes /js/script.js
 
   
   // *****************************************************
@@ -185,9 +186,6 @@ app.post('/register', async (req, res) => {
     }
   });
 
-
-
-
 // Authentication Middleware.
 const auth = (req, res, next) => {
    if (!req.session.user) {
@@ -289,14 +287,10 @@ app.delete('/delete-review/:id', async (req, res) => {
   }
 });
 
-
-
-
 app.get('/leave_review', (req, res) => {
   console.log('Session Data:', req.session);
   res.render('pages/leave_review', { hideNav: true });
 });
-
 
 app.post('/leave_review', async (req, res) => {
   const { rating, review, username } = req.body;
@@ -331,11 +325,6 @@ app.post('/leave_review', async (req, res) => {
     res.status(500).render('pages/leave_review', { error: 'Could not save your review.' });
   }
 });
-
-
-
-
-
 
 // *****************************************************
 // <!-- Start Server-->
