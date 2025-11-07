@@ -288,35 +288,35 @@ app.get('/leave_review', (req, res) => {
 
 app.post('/leave_review', async (req, res) => {
   const { rating, review, username } = req.body;
+
+  if (!rating || !review || !username) {
+    return res.status(400).render('pages/leave_review', { error: 'All fields are required.' });
+  }
+
   try {
-    // Insert review into reviews table
-    const reviewResult = await client.query(
-      'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING review_id',
-      [rating, review]
-    );
-    
-    // Get user_id for the provided username
-    const userID = await client.oneOrNone(
+    const userRow = await db.oneOrNone(
       'SELECT user_id FROM users WHERE username = $1',
       [username]
     );
-
-    if (!userID) {
-      return res.status(400).send("User not found");
+    if (!userRow) {
+      return res.status(404).render('pages/leave_review', { error: 'User not found.' });
     }
 
-    // Insert into reviews_to_user linker table
-    const reviewId = reviewResult.rows[0].review_id;
-    await client.query(
-      'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
-      [reviewId, userID.user_id]
+    const insertedReview = await db.one(
+      'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING review_id',
+      [rating, review]
     );
 
-    res.redirect('/success'); // Redirect to a success page*/
-  } catch (error) {
-    console.error("Error occurred while inserting review:", error);
-    res.redirect('/error'); // Redirect to an error page
-  } 
+    await db.none(
+      'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
+      [insertedReview.review_id, userRow.user_id]
+    );
+
+    res.render('pages/leave_review', { success: 'Review submitted!' });
+  } catch (err) {
+    console.error('Error inserting review:', err);
+    res.status(500).render('pages/leave_review', { error: 'Could not save your review.' });
+  }
 });
 
 
