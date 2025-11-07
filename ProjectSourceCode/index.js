@@ -12,7 +12,8 @@ const bodyParser = require('body-parser');
 const session = require('express-session'); // To set the session object. To store or access session data, use the `req.session`, which is (generally) serialized as JSON by the store
 const bcrypt = require('bcryptjs'); //  To hash passwords
 const axios = require('axios'); // To make HTTP requests from our server
-
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 // *****************************************************
 // <!-- Connect to DB -->
 // *****************************************************
@@ -184,17 +185,20 @@ app.post('/register', async (req, res) => {
     }
   });
 
+
+
+
 // Authentication Middleware.
 const auth = (req, res, next) => {
-  if (!req.session.user) {
-    // Default to login page.
-    return res.redirect('/login');
-  }
-  next();
-};
+   if (!req.session.user) {
+     // Default to login page.
+     return res.redirect('/login');
+   }
+   next();
+ };
 
-// Authentication Required
-app.use(auth);
+// // Authentication Required
+ app.use(auth);
 
 // Logout
 app.get('/logout', (req, res) => {
@@ -286,30 +290,52 @@ app.delete('/delete-review/:id', async (req, res) => {
 });
 
 
-  app.post('/leave_review', async (req, res) => {
-    try{
-      //insert review
-      const reviewResult = await client.query(
-      'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING id',
-      [req.body.rating, req.body.review]
+
+
+app.get('/leave_review', (req, res) => {
+  console.log('Session Data:', req.session);
+  res.render('pages/leave_review', { hideNav: true });
+});
+
+
+app.post('/leave_review', async (req, res) => {
+  const { rating, review, username } = req.body;
+
+  if (!rating || !review || !username) {
+    return res.status(400).render('pages/leave_review', { error: 'All fields are required.' });
+  }
+
+  try {
+    //get user_id for provided username
+    const userRow = await db.oneOrNone(
+      'SELECT user_id FROM users WHERE username = $1',
+      [username]
     );
-    
-      const reviewId = reviewResult.rows[0].id;
-      await client.query(
-        'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
-      [reviewId, req.body.user_id]
+    if (!userRow) {
+      return res.status(404).render('pages/leave_review', { error: 'User not found.' });
+    }
+    //insert into review
+    const insertedReview = await db.one(
+      'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING review_id',
+      [rating, review]
+    );
+    //insert review_id and user_id inot join table
+    await db.none(
+      'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
+      [insertedReview.review_id, userRow.user_id]
     );
 
-    }
+    res.render('pages/leave_review', { success: 'Review submitted!' });
+  } catch (err) {
+    console.error('Error inserting review:', err);
+    res.status(500).render('pages/leave_review', { error: 'Could not save your review.' });
+  }
+});
 
-    catch (err) {
-        console.error(err);
 
-        // Redirect back to listing page if there’s an error
-        res.redirect('/listings');
-    }
-    
-  });
+
+
+
 
 // *****************************************************
 // <!-- Start Server-->
