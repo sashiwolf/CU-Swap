@@ -4,8 +4,8 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- Seed users with valid CU emails (4 letters + 4 digits)
 -- Password = Password1!
 INSERT INTO users (username, password, email, phone_num, role) VALUES
-  ('seedbuyer',  crypt('Password1!', gen_salt('bf')), 'abcd1234@colorado.edu', '1111111111', 'user'),
-  ('seedseller', crypt('Password1!', gen_salt('bf')), 'efgh5678@colorado.edu', '2222222222', 'user');
+  ('seedbuyer',  crypt('Password1!', gen_salt('bf')), 'abcd1234@colorado.edu', '1111111100', 'user'),
+  ('seedseller', crypt('Password1!', gen_salt('bf')), 'efgh5678@colorado.edu', '2222222200', 'user');
 
 -- Sample listing owned by seedseller
 INSERT INTO listings (title, description, price, category, image_url, contact_info)
