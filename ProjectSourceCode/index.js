@@ -12,6 +12,9 @@ const bodyParser = require('body-parser');
 const session = require('express-session'); // To set the session object. To store or access session data, use the `req.session`, which is (generally) serialized as JSON by the store
 const bcrypt = require('bcryptjs'); //  To hash passwords
 const axios = require('axios'); // To make HTTP requests from our server
+const dotenv = require("dotenv");
+const exphbs = require("express-handlebars");
+const Stripe = require("stripe");
 
 // *****************************************************
 // <!-- Connect to DB -->
@@ -24,7 +27,7 @@ const hbs = handlebars.create({
   partialsDir: path.join(__dirname, 'src/views/partials'),
 });
 
-
+dotenv.config(); 
 // database configuration
 const dbConfig = {
   host: 'db', // the database server
@@ -35,6 +38,8 @@ const dbConfig = {
 };
 
 const db = pgp(dbConfig);
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY); 
 
 // test your database
 db.connect()
@@ -54,7 +59,9 @@ db.connect()
   app.set('view engine', 'hbs');
   app.set('views', path.join(__dirname, 'src/views'));
   app.use(bodyParser.json()); // specify the usage of JSON for parsing request body.
-  
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
   // initialize session variables
   app.use(
     session({
@@ -298,6 +305,86 @@ app.delete('/delete-review/:id', async (req, res) => {
     }
     
   });
+
+  app.engine(
+    "hbs",
+    exphbs.engine({
+      extname: ".hbs",
+      layoutsDir: path.join(__dirname, "views/layouts"),
+      defaultLayout: "main",
+      partialsDir: path.join(__dirname, "views/partials"),
+      helpers: {
+        formatCurrency: (amount, currency = "usd") => {
+          const value = (amount || 0) / 100;
+          try{
+            return new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: currency.toUpperCase()
+            }).format(value);
+          } catch {
+            return `$${value.toFixed(2)}`;
+          }
+        }
+      }
+    })
+  );
+  app.set("veiw engine", "hsb");
+  app.set("views", path.join(__dirname, "veiws"));
+
+  // Demo seller (connected account)
+  const DEMO_SELLER_ACCOUNT_ID = "acct_1yourconnected"; // needs to be replaced with the acoual account of each person
+
+  app.get("/", (req, res) => {
+    res.redirect("/checkout");
+  });
+ // checkout out page with fixed amount for now later to be connected to the data base
+  app.get("/checkout", (req, res) => {
+    const amount = 2000; 
+    const currency = "usd"; 
+
+    res.render("checkout", {
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+      amount,
+      currency,
+      sellerAccountId: DEMO_SELLER_ACCOUNT_ID,
+      description: "Demom item description"
+    });
+  });
+
+  app.post("/payments/create-intent", async (req, res) => {
+    try {
+      const {amount, currency, sellerAccountId } = req.body;
+
+      if(!sellerAccountId)
+      {
+        return res.status(400).json({ error: "Missing sellerAccountID"});
+      }
+      const paymentIntent = await stripe.paymentIntents.create(
+        {
+          amount, 
+          currency,
+          automatic_payment_methods: {enabled: true}
+        },
+        {
+          stripeAccount: sellerAccountId // direct charge
+        }
+      );
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (err) {
+      console.error("Error creating PaymentIntent:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/success", (req, res) => {
+    res.render("success");
+  });
+
+  app.get("/error", (req, res) => {
+    res.render("error");
+  });
+
+  
 
 // *****************************************************
 // <!-- Start Server-->
