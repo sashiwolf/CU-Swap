@@ -209,6 +209,7 @@ app.get('/logout', (req, res) => {
   });
 });
 
+
 // My Reviews page
 app.get('/my-reviews', async (req, res) => {
   try {
@@ -308,15 +309,26 @@ app.post('/leave_review', async (req, res) => {
     if (!userRow) {
       return res.status(404).render('pages/leave_review', { error: 'User not found.' });
     }
+    
+    //get user_id for current session
+    const sessionRow = await db.oneOrNone(
+      'SELECT user_id FROM users WHERE username = $1',
+      [req.session.user.username]
+    );
+    if (!sessionRow) {
+      return res.status(404).render('pages/leave_review', { error: 'User not found.' });
+    }
+    
     //insert into review
     const insertedReview = await db.one(
       'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING review_id',
       [rating, review]
     );
-    //insert review_id and user_id inot join table
+    
+    //insert join table
     await db.none(
-      'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
-      [insertedReview.review_id, userRow.user_id]
+      'INSERT INTO reviews_to_user (review_id, reviewer_id, reviewee_id) VALUES ($1, $2, $3)',
+      [insertedReview.review_id, sessionRow.user_id, userRow.user_id]
     );
 
     res.render('pages/leave_review', { success: 'Review submitted!' });
