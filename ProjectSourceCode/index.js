@@ -47,142 +47,144 @@ db.connect()
     console.log('ERROR:', error.message || error);
   });
 
-// *****************************************************
-// <!-- App Settings -->
-// *****************************************************
+  // *****************************************************
+  // <!-- App Settings -->
+  // *****************************************************
+  
+  app.engine('hbs', hbs.engine);
+  app.set('view engine', 'hbs');
+  app.set('views', path.join(__dirname, 'src/views'));
+  app.use(bodyParser.json()); // specify the usage of JSON for parsing request body.
+  
+  // initialize session variables
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET,
+      saveUninitialized: false,
+      resave: false,
+    })
+  );
+  
+  app.use(
+    bodyParser.urlencoded({
+      extended: true,
+    })
+  );
 
-app.engine('hbs', hbs.engine);
-app.set('view engine', 'hbs');
-app.set('views', path.join(__dirname, 'src/views'));
-app.use(bodyParser.json()); // specify the usage of JSON for parsing request body.
+  // Serve static assets
+  app.use('/images', express.static(path.join(__dirname, 'src', 'views', 'Images'))); 
+  app.use('/js', express.static(path.join(__dirname, 'src', 'resources', 'js'))); // exposes /js/script.js
 
-// initialize session variables
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    saveUninitialized: false,
-    resave: false,
-  })
-);
+  
+  // *****************************************************
+  // <!-- API Routes -->
+  // *****************************************************
 
-app.use(
-  bodyParser.urlencoded({
-    extended: true,
-  })
-);
+  // Dummy API Route for lab 10
+  app.get('/welcome', (req, res) => {
+    res.json({status: 'success', message: 'Welcome!'});
+  });
 
-// Serve static assets (For the images)
-app.use('/images', express.static(path.join(__dirname, 'src', 'views', 'Images')));
+  app.get('/', (req,res) =>{
+    res.render('pages/home', { showAuthButtons: true, hideNav: true});
+  });
 
-
-// *****************************************************
-// <!-- API Routes -->
-// *****************************************************
-app.get('/', (req, res) => {
-  res.render('pages/home', { showAuthButtons: true, hideNav: true });
-});
-
-app.get('/register', (req, res) => {
-  res.render('pages/register', { hideNav: true });
-});
-
+  app.get('/register', (req, res) => {
+    res.render('pages/register', { hideNav: true});
+  });
+  
 // Register
 app.post('/register', async (req, res) => {
+  // accept any of these keys for phone (form/tests can vary)
+  const phone =
+    req.body.phone ??
+    req.body.phone_num ??
+    req.body.Phone ?? null;
 
-  // Check if username or password is empty
-  if (!req.body.username || !req.body.password) {
-    return res.redirect('/register');
+  // required fields
+  if (!req.body.username || !req.body.password || !req.body.email || !phone) {
+    return res.redirect(302, '/register');
   }
 
   try {
-    //hash the password using bcrypt library
+    // hash the password using bcrypt
     const hash = await bcrypt.hash(req.body.password, 10);
 
-    // To-DO: Insert username and hashed password into the 'users' table
-    await db.none('INSERT INTO users (username, password, email, phone_num) VALUES ($1, $2, $3, $4)', [
-      req.body.username,
-      hash,
-      req.body.email,
-      req.body.Phone
-    ]);
+    // Insert user
+    await db.none(
+      'INSERT INTO users (username, password, email, phone_num) VALUES ($1, $2, $3, $4)',
+      [req.body.username, hash, req.body.email, phone]
+    );
 
-
-    // Redirect to login page after successful registration6
-    res.redirect('/login');
+    // Success → login
+    return res.redirect(302, '/login');
   } catch (err) {
     console.error(err);
-
-    // Redirect back to register page if there’s an error
-    res.redirect('/register');
+    // For tests, just redirect back to register on any error
+    return res.redirect(302, '/register');
   }
 });
 
+  //render login
+  app.get('/login', (req, res) => {
+    res.render('pages/login', { hideNav: true});
+  });
 
-
-
-
-
-
-
-//render login
-app.get('/login', (req, res) => {
-  res.render('pages/login', { hideNav: true });
-});
-
-//login func
-app.post('/login', async (req, res) => {
-  //make sure that form isnt empty
-  if (!req.body.email || !req.body.password) {
-    return res.redirect('/login;');
-  }
-  try {
-    //get username from database
-    const user = await db.oneOrNone('SELECT * FROM users WHERE email = $1', [
-      req.body.email,
-    ]);
-
-    //see if a user was returned
-    if (!user) {
-      return res.redirect('/register');
+  //login func
+  app.post('/login', async (req, res) => {
+    //make sure that form isnt empty
+    if (!req.body.email || !req.body.password) {
+        return res.status(400).render('pages/login', {error: true, message: "Please enter an email and password", hideNav: true});
     }
+    try {
+        //get username from database
+        const user = await db.oneOrNone('SELECT * FROM users WHERE email = $1', [
+        req.body.email,
+        ]);
 
-    // check if password from request matches with password in DB
-    const match = await bcrypt.compare(req.body.password, user.password);
+        //see if a user was returned
+        if (!user) {
+            return res.status(400).render('pages/register', {error: true, message: "User does not exist.", hideNav: true});
+        }
 
-    //get mod status
-    const userRole = user.role;
+        // check if password from request matches with password in DB
+        const match = await bcrypt.compare(req.body.password, user.password);
 
-    //passwords match and user is not a mod
-    if (match && userRole == 'user') {
-      //save user details in session 
-      req.session.user = user;
-      req.session.modTag = false
-      req.session.save(() => {
-        res.redirect('/discover')
-      });
+        //get mod status
+        const userRole = user.role;
+
+        //passwords match and user is not a mod
+        if(match && userRole == 'user')
+        {
+            //save user details in session 
+            req.session.user = user;
+            req.session.modTag = false
+            req.session.save(() =>{
+                res.redirect('/discover')
+            });
+        }
+        else if(match && userRole == 'moderator')
+        {
+            //save user details in session 
+            req.session.user = user;
+            req.session.modTag = true;
+            req.session.save(() =>{
+                res.redirect('/modHome')
+            });
+        }
+        //passwords dont match
+        else
+        {
+        res.status(400).render('pages/login', {error: true, message: 'Incorrect username or password', hideNav: true});
+        }
+        
+    } catch (err) {
+        console.error(err);
+
+        // Redirect back to register page if there’s an error
+        res.status(400).render('pages/register', {error: true, message: "There was an error with login, please register", hideNav: true});
     }
-    else if (match && userRole == 'moderator') {
-      //save user details in session 
-      req.session.user = user;
-      req.session.modTag = true;
-      req.session.save(() => {
-        res.redirect('/modHome')
-      });
-    }
-    //passwords dont match
-    else {
-      res.render('pages/login', {
-        message: 'Incorrect username or password'
-      });
-    }
-
-  } catch (err) {
-    console.error(err);
-
-    // Redirect back to register page if there’s an error
-    res.redirect('/register');
-  }
-});
+  });
 
 // Authentication Middleware.
 const auth = (req, res, next) => {
@@ -246,21 +248,6 @@ app.get('/my-reviews', async (req, res) => {
       reviews: [],
       message: 'Could not load your reviews.'
     });
-  }
-});
-
-//Discover page
-app.get('/discover', async (req, res) => {
-  try {
-    const listings = await db.any(`
-        SELECT title, price, category, image_url
-        FROM listings
-        LIMIT 50
-    `);
-
-    res.render('pages/discover', { listings });
-  } catch (err) {
-    console.error();
   }
 });
 
