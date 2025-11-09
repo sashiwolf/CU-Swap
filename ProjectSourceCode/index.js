@@ -46,145 +46,142 @@ db.connect()
     console.log('ERROR:', error.message || error);
   });
 
-  // *****************************************************
-  // <!-- App Settings -->
-  // *****************************************************
-  
-  app.engine('hbs', hbs.engine);
-  app.set('view engine', 'hbs');
-  app.set('views', path.join(__dirname, 'src/views'));
-  app.use(bodyParser.json()); // specify the usage of JSON for parsing request body.
-  
-  // initialize session variables
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET,
-      saveUninitialized: false,
-      resave: false,
-    })
-  );
-  
-  app.use(
-    bodyParser.urlencoded({
-      extended: true,
-    })
-  );
+// *****************************************************
+// <!-- App Settings -->
+// *****************************************************
 
-  // Serve static assets (For the images)
-  app.use('/images', express.static(path.join(__dirname, 'src', 'views', 'Images'))); 
+app.engine('hbs', hbs.engine);
+app.set('view engine', 'hbs');
+app.set('views', path.join(__dirname, 'src/views'));
+app.use(bodyParser.json()); // specify the usage of JSON for parsing request body.
 
-  
-  // *****************************************************
-  // <!-- API Routes -->
-  // *****************************************************
-  app.get('/', (req,res) =>{
-    res.render('pages/home', { showAuthButtons: true, hideNav: true});
-  });
+// initialize session variables
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    saveUninitialized: false,
+    resave: false,
+  })
+);
 
-  app.get('/register', (req, res) => {
-    res.render('pages/register', { hideNav: true});
-  });
-  
-  // Register
-  app.post('/register', async (req, res) => {
-  
-    // Check if username or password is empty
-    if (!req.body.username || !req.body.password) {
+app.use(
+  bodyParser.urlencoded({
+    extended: true,
+  })
+);
+
+// Serve static assets (For the images)
+app.use('/images', express.static(path.join(__dirname, 'src', 'views', 'Images')));
+
+
+// *****************************************************
+// <!-- API Routes -->
+// *****************************************************
+app.get('/', (req, res) => {
+  res.render('pages/home', { showAuthButtons: true, hideNav: true });
+});
+
+app.get('/register', (req, res) => {
+  res.render('pages/register', { hideNav: true });
+});
+
+// Register
+app.post('/register', async (req, res) => {
+
+  // Check if username or password is empty
+  if (!req.body.username || !req.body.password) {
+    return res.redirect('/register');
+  }
+
+  try {
+    //hash the password using bcrypt library
+    const hash = await bcrypt.hash(req.body.password, 10);
+
+    // To-DO: Insert username and hashed password into the 'users' table
+    await db.none('INSERT INTO users (username, password, email, phone_num) VALUES ($1, $2, $3, $4)', [
+      req.body.username,
+      hash,
+      req.body.email,
+      req.body.Phone
+    ]);
+
+
+    // Redirect to login page after successful registration6
+    res.redirect('/login');
+  } catch (err) {
+    console.error(err);
+
+    // Redirect back to register page if there’s an error
+    res.redirect('/register');
+  }
+});
+
+
+
+
+
+
+
+
+//render login
+app.get('/login', (req, res) => {
+  res.render('pages/login', { hideNav: true });
+});
+
+//login func
+app.post('/login', async (req, res) => {
+  //make sure that form isnt empty
+  if (!req.body.email || !req.body.password) {
+    return res.redirect('/login;');
+  }
+  try {
+    //get username from database
+    const user = await db.oneOrNone('SELECT * FROM users WHERE email = $1', [
+      req.body.email,
+    ]);
+
+    //see if a user was returned
+    if (!user) {
       return res.redirect('/register');
     }
-  
-    try {
-      //hash the password using bcrypt library
-      const hash = await bcrypt.hash(req.body.password, 10);
-      
-      // To-DO: Insert username and hashed password into the 'users' table
-      await db.none('INSERT INTO users (username, password, email, phone_num) VALUES ($1, $2, $3, $4)', [
-        req.body.username,
-        hash,
-        req.body.email,
-        req.body.Phone
-      ]);
-      
-  
-      // Redirect to login page after successful registration6
-      res.redirect('/login');
-    } catch (err) {
-      console.error(err);
-  
-      // Redirect back to register page if there’s an error
-      res.redirect('/register');
+
+    // check if password from request matches with password in DB
+    const match = await bcrypt.compare(req.body.password, user.password);
+
+    //get mod status
+    const userRole = user.role;
+
+    //passwords match and user is not a mod
+    if (match && userRole == 'user') {
+      //save user details in session 
+      req.session.user = user;
+      req.session.modTag = false
+      req.session.save(() => {
+        res.redirect('/discover')
+      });
     }
-  });
-
-
-
-
-
-
-
-
-  //render login
-  app.get('/login', (req, res) => {
-    res.render('pages/login', { hideNav: true});
-  });
-
-  //login func
-  app.post('/login', async (req, res) => {
-    //make sure that form isnt empty
-    if (!req.body.email || !req.body.password) {
-        return res.redirect('/login;');
+    else if (match && userRole == 'moderator') {
+      //save user details in session 
+      req.session.user = user;
+      req.session.modTag = true;
+      req.session.save(() => {
+        res.redirect('/modHome')
+      });
     }
-    try {
-        //get username from database
-        const user = await db.oneOrNone('SELECT * FROM users WHERE email = $1', [
-        req.body.email,
-        ]);
-
-        //see if a user was returned
-        if (!user) {
-            return res.redirect('/register');
-        }
-
-        // check if password from request matches with password in DB
-        const match = await bcrypt.compare(req.body.password, user.password);
-
-        //get mod status
-        const userRole = user.role;
-
-        //passwords match and user is not a mod
-        if(match && userRole == 'user')
-        {
-            //save user details in session 
-            req.session.user = user;
-            req.session.modTag = false
-            req.session.save(() =>{
-                res.redirect('/discover')
-            });
-        }
-        else if(match && userRole == 'moderator')
-        {
-            //save user details in session 
-            req.session.user = user;
-            req.session.modTag = true;
-            req.session.save(() =>{
-                res.redirect('/modHome')
-            });
-        }
-        //passwords dont match
-        else
-        {
-        res.render('pages/login', {
+    //passwords dont match
+    else {
+      res.render('pages/login', {
         message: 'Incorrect username or password'
-        });
-        }
-        
-    } catch (err) {
-        console.error(err);
-
-        // Redirect back to register page if there’s an error
-        res.redirect('/register');
+      });
     }
-  });
+
+  } catch (err) {
+    console.error(err);
+
+    // Redirect back to register page if there’s an error
+    res.redirect('/register');
+  }
+});
 
 // // Authentication Middleware.
 // const auth = (req, res, next) => {
@@ -237,6 +234,21 @@ app.get('/my-reviews', async (req, res) => {
   }
 });
 
+//Discover page
+app.get('/discover', async (req, res) => {
+  try {
+    const listings = await db.any(`
+        SELECT title, price, category, image_url
+        FROM listings
+        LIMIT 50
+    `);
+
+    res.render('pages/discover', { listings });
+  } catch (err) {
+    console.error();
+  }
+});
+
 // Delete a review
 app.delete('/delete-review/:id', async (req, res) => {
   const review_id = req.params.id;
@@ -276,30 +288,30 @@ app.delete('/delete-review/:id', async (req, res) => {
   }
 });
 
-  app.post('/leave_review', async (req, res) => {
-    try{
-      //insert review
-      const reviewResult = await client.query(
+app.post('/leave_review', async (req, res) => {
+  try {
+    //insert review
+    const reviewResult = await client.query(
       'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING id',
       [req.body.rating, req.body.review]
     );
-    
-      const reviewId = reviewResult.rows[0].id;
-      await client.query(
-        'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
+
+    const reviewId = reviewResult.rows[0].id;
+    await client.query(
+      'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
       [reviewId, req.body.user_id]
     );
 
-    }
+  }
 
-    catch (err) {
-        console.error(err);
+  catch (err) {
+    console.error(err);
 
-        // Redirect back to listing page if there’s an error
-        res.redirect('/listings');
-    }
-    
-  });
+    // Redirect back to listing page if there’s an error
+    res.redirect('/listings');
+  }
+
+});
 
 // *****************************************************
 // <!-- Start Server-->
