@@ -338,6 +338,21 @@ app.post('/leave_review', async (req, res) => {
   }
 });
 
+//Discover page
+app.get('/discover', async (req, res) => {
+  try {
+    const listings = await db.any(`
+        SELECT title, price, category, image_url
+        FROM listings
+        LIMIT 50
+    `);
+
+    res.render('pages/discover', { listings });
+  } catch (err) {
+    console.error();
+  }
+});
+
 // *****************************************************
 // <!-- Start Server-->
 // *****************************************************
