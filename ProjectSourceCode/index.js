@@ -12,7 +12,8 @@ const bodyParser = require('body-parser');
 const session = require('express-session'); // To set the session object. To store or access session data, use the `req.session`, which is (generally) serialized as JSON by the store
 const bcrypt = require('bcryptjs'); //  To hash passwords
 const axios = require('axios'); // To make HTTP requests from our server
-
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 // *****************************************************
 // <!-- Connect to DB -->
 // *****************************************************
@@ -183,40 +184,54 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// // Authentication Middleware.
-// const auth = (req, res, next) => {
-//   if (!req.session.user) {
-//     // Default to login page.
-//     return res.redirect('/login');
-//   }
-//   next();
-// };
+// Authentication Middleware.
+const auth = (req, res, next) => {
+   if (!req.session.user) {
+     // Default to login page.
+     return res.redirect('/login');
+   }
+   next();
+ };
 
 // // Authentication Required
-// app.use(auth);
+ app.use(auth);
 
 // Logout
 app.get('/logout', (req, res) => {
   req.session.destroy(err => {
     if (err) {
       console.error(err);
-      return res.render('pages/logout', { message: 'Error logging out. Please try again.' });
+      return res.render('pages/logout', {error: true, message: 'Error logging out. Please try again.' });
     }
-    res.render('pages/logout', { message: 'Logged out Successfully' });
+    res.render('pages/logout', {error: false, message: 'Logged out Successfully' });
   });
 });
+
 
 // My Reviews page
 app.get('/my-reviews', async (req, res) => {
   try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
     const userId = req.session.user.user_id;
-    const reviews = await db.any(`
-      SELECT r.review_id, r.content, r.rating
+
+    const reviews = await db.any(
+      `
+      SELECT 
+        r.review_id,
+        r.actual_review AS content,
+        r.rating,
+        reviewee.username AS reviewee_username
       FROM reviews r
-      JOIN reviews_to_user ru ON r.review_id = ru.review_id
-      WHERE ru.user_id = $1
+      JOIN reviews_to_user ru      ON ru.review_id = r.review_id
+      JOIN users reviewee          ON reviewee.user_id = ru.reviewee_id
+      WHERE ru.reviewer_id = $1
       ORDER BY r.review_id DESC
-    `, [userId]);
+      `,
+      [userId]
+    );
 
     res.render('pages/my-reviews', {
       layout: 'main',
@@ -255,21 +270,20 @@ app.delete('/delete-review/:id', async (req, res) => {
   const user = req.session.user;
 
   if (!user) {
-    return res.status(401).json({ error: 'You must be logged in to delete a review.' });
+    return res.status(401).json({ error: true, message: 'You must be logged in to delete a review.' });
   }
 
   try {
-    // Check if the logged-in user is a moderator
+    // Moderators can delete any review
     if (user.role === 'moderator') {
-      // Mods can delete ANY review
       await db.none('DELETE FROM reviews_to_user WHERE review_id = $1', [review_id]);
       await db.none('DELETE FROM reviews WHERE review_id = $1', [review_id]);
       return res.status(200).json({ message: 'Moderator deleted the review successfully.' });
     }
 
-    // Otherwise, ensure the user owns the review
+    // Ensure the logged-in user is the reviewer (author)
     const ownsReview = await db.oneOrNone(
-      'SELECT 1 FROM reviews_to_user WHERE review_id = $1 AND user_id = $2',
+      'SELECT 1 FROM reviews_to_user WHERE review_id = $1 AND reviewer_id = $2',
       [review_id, user.user_id]
     );
 
@@ -277,7 +291,6 @@ app.delete('/delete-review/:id', async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission to delete this review.' });
     }
 
-    // Delete the review for regular user
     await db.none('DELETE FROM reviews_to_user WHERE review_id = $1', [review_id]);
     await db.none('DELETE FROM reviews WHERE review_id = $1', [review_id]);
 
@@ -288,34 +301,59 @@ app.delete('/delete-review/:id', async (req, res) => {
   }
 });
 
+app.get('/leave_review', (req, res) => {
+  console.log('Session Data:', req.session);
+  res.render('pages/leave_review', { hideNav: true });
+});
+
 app.post('/leave_review', async (req, res) => {
+  const { rating, review, username } = req.body;
+
+  if (!rating || !review || !username) {
+    return res.status(400).render('pages/leave_review', { error: 'All fields are required.' });
+  }
+
   try {
-    //insert review
-    const reviewResult = await client.query(
-      'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING id',
-      [req.body.rating, req.body.review]
+    //get user_id for provided username
+    const userRow = await db.oneOrNone(
+      'SELECT user_id FROM users WHERE username = $1',
+      [username]
+    );
+    if (!userRow) {
+      return res.status(404).render('pages/leave_review', { error: 'User not found.' });
+    }
+    
+    //get user_id for current session
+    const sessionRow = await db.oneOrNone(
+      'SELECT user_id FROM users WHERE username = $1',
+      [req.session.user.username]
+    );
+    if (!sessionRow) {
+      return res.status(404).render('pages/leave_review', { error: 'User not found.' });
+    }
+    
+    //insert into review
+    const insertedReview = await db.one(
+      'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING review_id',
+      [rating, review]
+    );
+    
+    //insert join table
+    await db.none(
+      'INSERT INTO reviews_to_user (review_id, reviewer_id, reviewee_id) VALUES ($1, $2, $3)',
+      [insertedReview.review_id, sessionRow.user_id, userRow.user_id]
     );
 
-    const reviewId = reviewResult.rows[0].id;
-    await client.query(
-      'INSERT INTO reviews_to_user (review_id, user_id) VALUES ($1, $2)',
-      [reviewId, req.body.user_id]
-    );
-
+    res.render('pages/leave_review', { success: 'Review submitted!' });
+  } catch (err) {
+    console.error('Error inserting review:', err);
+    res.status(500).render('pages/leave_review', { error: 'Could not save your review.' });
   }
-
-  catch (err) {
-    console.error(err);
-
-    // Redirect back to listing page if there’s an error
-    res.redirect('/listings');
-  }
-
 });
 
 // *****************************************************
 // <!-- Start Server-->
 // *****************************************************
 // starting the server and keeping the connection open to listen for more requests
-app.listen(3000);
+module.exports = app.listen(3000);
 console.log('Server is listening on port 3000');
