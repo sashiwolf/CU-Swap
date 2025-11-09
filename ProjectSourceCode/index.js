@@ -328,7 +328,7 @@ app.post('/leave_review', async (req, res) => {
     //insert join table
     await db.none(
       'INSERT INTO reviews_to_user (review_id, reviewer_id, reviewee_id) VALUES ($1, $2, $3)',
-      [insertedReview.review_id, userRow.user_id, sessionRow.user_id]
+      [insertedReview.review_id, sessionRow.user_id, userRow.user_id]
     );
 
     res.render('pages/leave_review', { success: 'Review submitted!' });
