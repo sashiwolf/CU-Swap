@@ -1,0 +1,73 @@
+To implement the page body as a Bootstrap grid displaying merchandise cards with the required details, you need to use the Handlebars #each helper to iterate over a list of merchandise objects passed from your server. You'll replace the placeholder columns (<div class="col">...</div>) with a Bootstrap Card component inside each column.
+
+Here is the revised Handlebars code:
+
+Handlebars Merchandise Grid Implementation 🛍️
+This code assumes your server is passing an array of merchandise objects to the template, typically named something like merchandise or items. Each object in that array is assumed to have the properties: thumbnail, sellerPhone, sellerEmail, price, and name.
+
+Handlebars
+
+<main>
+    <div class="container py-4">
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            
+            {{#each merchandise}}
+            
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <img src="{{this.thumbnail}}" class="card-img-top" alt="{{this.name}} thumbnail" style="height: 200px; object-fit: cover;">
+                    
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title text-primary">{{this.name}}</h5>
+                        
+                        <h4 class="card-subtitle mb-2 text-success mt-auto">
+                            <strong>${{this.price}}</strong>
+                        </h4>
+
+                        <div class="mt-3 border-top pt-2">
+                            <p class="card-text mb-0">
+                                <small class="text-muted">Seller Contact:</small>
+                            </p>
+                            <p class="card-text mb-0">
+                                <i class="bi bi-phone me-1"></i> Phone: 
+                                <a href="tel:{{this.sellerPhone}}">{{this.sellerPhone}}</a>
+                            </p>
+                            <p class="card-text">
+                                <i class="bi bi-envelope me-1"></i> Email: 
+                                <a href="mailto:{{this.sellerEmail}}">{{this.sellerEmail}}</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{/each}}
+            
+        </div>
+    </div>
+</main>
+💡 Key Changes Explained
+Iterating with #each: The <div class="row"> now wraps the {{#each merchandise}}...{{/each}} block. This ensures that a new column is generated for every item in the merchandise array.
+
+Responsive Grid Classes: The class row-cols-1 row-cols-md-3 g-4 on the <div class="row"> is a modern Bootstrap way to define grid columns:
+
+row-cols-1: One card per row on small devices.
+
+row-cols-md-3: Three cards per row on medium-sized screens and up.
+
+g-4: Adds good spacing (gutter) between the cards.
+
+Bootstrap Card (card h-100): The contents of the <div class="col"> are replaced with a card.
+
+h-100: Ensures all cards in the row have the same height, preventing alignment issues.
+
+shadow-sm: Adds a subtle shadow for better visual separation.
+
+Data Binding: The required data points are inserted using Handlebars syntax:
+
+{{this.thumbnail}} for the image source (<img src="...">).
+
+{{this.name}} for the title.
+
+{{this.price}} for the price.
+
+{{this.sellerPhone}} and {{this.sellerEmail}} for the contact links.
