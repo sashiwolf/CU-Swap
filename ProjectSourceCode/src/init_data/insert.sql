@@ -9,7 +9,7 @@ INSERT INTO users (username, password, email, phone_num, role) VALUES
 
 -- Sample listing owned by seedseller
 INSERT INTO listings (title, description, price, category, image_url, contact_info)
-VALUES ('Graphing Calculator', 'TI-84 Plus CE, gently used', 65.00, 'Electronics', NULL, 'efgh5678@colorado.edu');
+VALUES ('Graphing Calculator', 'TI-84 Plus CE, gently used', 65.00, 'Electronics', 'https://camo.githubusercontent.com/3cae61090608b8cbd681f5825ca5ac76af8d8d3ee12024926d51c5480aef5d6c/68747470733a2f2f796176757a63656c696b65722e6769746875622e696f2f73616d706c652d696d616765732f696d6167652d313032312e6a7067', 'efgh5678@colorado.edu');
 
 INSERT INTO users_to_listings (user_id, listing_id)
 SELECT u.user_id, l.listing_id
