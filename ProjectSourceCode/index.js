@@ -15,7 +15,6 @@ const bcrypt = require('bcryptjs'); //  To hash passwords
 const axios = require('axios'); // To make HTTP requests from our server
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-const dotenv = require("dotenv");
 const exphbs = require("express-handlebars");
 const Stripe = require("stripe");
 
