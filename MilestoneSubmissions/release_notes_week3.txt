@@ -1,0 +1,32 @@
+What's Changed
+Database setup by @sashiwolf in #22
+Feature password hashing and backend code for rendering register page by @sashiwolf in #23
+login nodejs done by @HaydenLeovy in #24
+Partial Implementation by @ShonButz in #25
+leave review backend by @HaydenLeovy in #31
+Feature delete reviews / Feature logout by @sashiwolf in #29
+Page Implementation by @ShonButz in #54
+View my reviews page fetches reviews written by a user and displays them by @sashiwolf in #55
+Got login and register pages working by @HaydenLeovy in #56
+Integrate by @HaydenLeovy in #57
+Working code pushed from testing by @sashiwolf in #58
+Making sure testing branch is up to date by @sashiwolf in #61
+Error Message Back-end/Front-end by @ShonButz in #62
+Lab 10 by @sashiwolf in #63
+Feature view my reviews by @sashiwolf in #66
+Leave review page by @HaydenLeovy in #68
+Feature delete reviews by @sashiwolf in #69
+All review code integrated and leave review looks nice by @HaydenLeovy in #72
+Discovery page by @JYJY-UCB in #73
+Revert "Discovery page" by @HaydenLeovy in #74
+Status banners added to leave review. by @HaydenLeovy in #77
+Logout page complete by @sashiwolf in #76
+Email Verification (this sucked) by @ShonButz in #78
+Revert "Email Verification (this sucked)" by @sashiwolf in #79
+Same as the last one, but works with everything else by @ShonButz in #80
+Merging testing into main for week 3 by @sashiwolf in #82
+New Contributors
+@sashiwolf made their first contribution in #22
+@HaydenLeovy made their first contribution in #24
+@ShonButz made their first contribution in #25
+@JYJY-UCB made their first contribution in #73
