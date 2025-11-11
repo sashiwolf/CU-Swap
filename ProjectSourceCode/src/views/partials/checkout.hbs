@@ -68,7 +68,10 @@
         if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
           statusEl.textContent = "Payment successful! Redirecting…";
           statusEl.className = "mt-3 small text-success";
-          window.location.href = "/success"+ encodeURIComponent(sellerAccountId);
+          window.location.href =
+            "/success?sellerId=" + encodeURIComponent(sellerAccountId) +
+            "&payment_intent=" + encodeURIComponent(result.paymentIntent.id);
+
         } else if (result.paymentIntent) {
           statusEl.textContent = "Payment status: " + result.paymentIntent.status;
           statusEl.className = "mt-3 small text-warning";

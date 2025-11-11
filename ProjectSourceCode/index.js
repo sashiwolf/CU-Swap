@@ -431,6 +431,19 @@ app.get('/discover', async (req, res) => {
   }
 });
 
+app.get("/seller/:sellerId/reviews/new", (req, res) => {
+  const { sellerId } = req.params;
+
+  // Require a successful purchase for this seller in this session
+  if (!req.session.paidSellers || !req.session.paidSellers[sellerId]) {
+    return res.status(403).send("You can only leave a review after a successful purchase from this seller.");
+  }
+
+  // Render your review form view
+  res.render("pages/leave_review", { sellerId });
+});
+
+
 // *****************************************************
 // <!-- Start Server-->
 // *****************************************************
