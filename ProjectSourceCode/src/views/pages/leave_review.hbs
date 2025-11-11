@@ -73,8 +73,30 @@
     background: var(--gold);
     color: var(--black);
   }
+
+  .banner {
+  position: fixed;
+  top: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.85rem 1.75rem;
+  border-radius: 999px;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  z-index: 1000;
+  animation: slideDown 250ms ease-out;
+}
+.success-banner { background:#d1e7dd; color:#0f5132; border:1px solid #badbcc; }
+.error-banner { background:#f8d7da; color:#842029; border:1px solid #f5c2c7; }
+@keyframes slideDown { from { transform: translate(-50%,-10px); opacity:0; } to { transform: translate(-50%,0); opacity:1; } }
 </style>
 </head>
+{{#if success}}
+  <p class="success-banner">{{success}}</p>
+{{/if}}
+{{#if error}}
+  <p class="error-banner">{{error}}</p>
+{{/if}}
 <body>
 
 <main class="d-flex align-items-center justify-content-center">

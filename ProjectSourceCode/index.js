@@ -290,7 +290,7 @@ app.delete('/delete-review/:id', async (req, res) => {
 
 app.get('/leave_review', (req, res) => {
   console.log('Session Data:', req.session);
-  res.render('pages/leave_review', { hideNav: true });
+  res.render('pages/leave_review', { hideNav: false });
 });
 
 app.post('/leave_review', async (req, res) => {
@@ -319,11 +319,18 @@ app.post('/leave_review', async (req, res) => {
       return res.status(404).render('pages/leave_review', { error: 'User not found.' });
     }
     
+    //check whether user is trying to leave review for themselves. Dont insert and print error message
+    if(userRow.user_id == sessionRow.user_id)
+    {
+      return res.status(404).render('pages/leave_review', { error: 'You cannot leave a review for yourself' });
+    }
+
     //insert into review
     const insertedReview = await db.one(
       'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING review_id',
       [rating, review]
     );
+    
     
     //insert join table
     await db.none(
