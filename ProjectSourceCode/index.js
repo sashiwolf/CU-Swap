@@ -332,7 +332,7 @@ app.delete('/delete-review/:id', async (req, res) => {
   app.set("views", path.join(__dirname, "veiws"));
 
   // Demo seller (connected account)
-  const DEMO_SELLER_ACCOUNT_ID = "acct_1yourconnected"; // needs to be replaced with the acoual account of each person
+  const DEMO_SELLER_ACCOUNT_ID = "acct_1SSNU62fkfKSGVIR"; // needs to be replaced with the acoual account of each person
 
   app.get("/", (req, res) => {
     res.redirect("/checkout");
@@ -385,6 +385,35 @@ app.delete('/delete-review/:id', async (req, res) => {
   });
 
   
+// *****************************************************
+// <!-- ADDED: Stripe/Handlebars Override for src/views (keeps existing config) -->
+// *****************************************************
+
+app.engine(
+  "hbs",
+  exphbs.engine({
+    extname: ".hbs",
+    layoutsDir: path.join(__dirname, "src/views/layouts"),
+    defaultLayout: "main",
+    partialsDir: path.join(__dirname, "src/views/partials"),
+    helpers: {
+      formatCurrency: (amount, currency = "usd") => {
+        const value = (amount || 0) / 100;
+        try {
+          return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: currency.toUpperCase()
+          }).format(value);
+        } catch {
+          return `$${value.toFixed(2)}`;
+        }
+      }
+    }
+  })
+);
+
+app.set("view engine", "hbs");
+app.set("views", path.join(__dirname, "src/views"));
 
 // *****************************************************
 // <!-- Start Server-->
