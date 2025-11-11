@@ -1,12 +1,13 @@
 // *****************************************************
 // <!-- Import Dependencies -->
 // *****************************************************
-
+const dotenv = require('dotenv');
 const express = require('express'); // To build an application server or API
 const app = express();
 const handlebars = require('express-handlebars');
 const Handlebars = require('handlebars');
 const path = require('path');
+const nodemailer = require('nodemailer');
 const pgp = require('pg-promise')(); // To connect to the Postgres DB from the node server
 const bodyParser = require('body-parser');
 const session = require('express-session'); // To set the session object. To store or access session data, use the `req.session`, which is (generally) serialized as JSON by the store
@@ -46,6 +47,22 @@ db.connect()
   .catch(error => {
     console.log('ERROR:', error.message || error);
   });
+
+
+  const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+transporter.verify(err => {
+  if (err) console.error('Mail transporter error:', err);
+  else console.log('Mail transporter ready');
+});
+
+
 
   // *****************************************************
   // <!-- App Settings -->
@@ -92,36 +109,83 @@ db.connect()
   app.get('/register', (req, res) => {
     res.render('pages/register', { hideNav: true});
   });
-  
-// Register
-app.post('/register', async (req, res) => {
-  // accept any of these keys for phone (form/tests can vary)
-  const phone =
-    req.body.phone ??
-    req.body.phone_num ??
-    req.body.Phone ?? null;
 
-  // required fields
-  if (!req.body.username || !req.body.password || !req.body.email || !phone) {
-    return res.redirect(302, '/register');
-  }
+  app.post('/send-code', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ ok: false, msg: 'Email required' });
 
   try {
-    // hash the password using bcrypt
-    const hash = await bcrypt.hash(req.body.password, 10);
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 10 * 60 * 1000; // 10min
 
-    // Insert user
+    // store in session (bind to the email they requested it for)
+    req.session.emailVerification = { email, code, expires };
+
+    if(process.env.NODE_ENV !== 'test'){
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Your CU Swap Verification Code',
+      html: `
+        <h2>Verify your CU Swap email</h2>
+        <p>Enter this code within 10 minutes:</p>
+        <div style="font-size:28px;font-weight:700;letter-spacing:4px">${code}</div>
+      `,
+    });
+  }
+    const payload = {ok: true, msg: 'Code sent!'};
+    if (req.get('x-test') === '1'){
+      payload.code = code;
+    }
+    return res.json(payload);
+  } catch (err) {
+    console.error('send-code error:', err);
+    return res.status(500).json({ ok: false, msg: 'Failed to send code' });
+  }
+});
+  
+
+
+// Register
+app.post('/register', async (req, res) => {
+   const { email, code, username, password, Phone } = req.body; 
+
+  // helper to produce JSON in tests, normal behavior otherwise
+  const fail = (status, reason, fallbackRedirect = '/register') => {
+    if (req.get('x-test') === '1') return res.status(status).json({ ok:false, reason });
+    return res.redirect(302, fallbackRedirect);
+  };
+
+  if (!username || !password || !email || !Phone || !code) {
+    return fail(400, 'missing_fields');
+  }
+
+  const v = req.session.emailVerification;
+  if (!v || v.email !== email) return fail(400, 'no_session_or_email_mismatch');
+  if (Date.now() > v.expires)  return fail(400, 'expired');
+  if (v.code !== code)         return fail(400, 'code_mismatch');
+
+  try {
+    const existing = await db.oneOrNone(
+      'SELECT 1 FROM users WHERE email=$1 OR username=$2',
+      [email, username]
+    );
+    if (existing) return fail(400, 'duplicate');
+
+    const hash = await bcrypt.hash(password, 10);
+
     await db.none(
-      'INSERT INTO users (username, password, email, phone_num) VALUES ($1, $2, $3, $4)',
-      [req.body.username, hash, req.body.email, phone]
+      `INSERT INTO users (username, password, email, phone_num, role, verified)
+       VALUES ($1, $2, $3, $4, 'user', true)`,
+      [username, hash, email, Phone]
     );
 
-    // Success → login
+    req.session.emailVerification = null;
     return res.redirect(302, '/login');
+
   } catch (err) {
-    console.error(err);
-    // For tests, just redirect back to register on any error
-    return res.redirect(302, '/register');
+    console.error('register error:', err);
+    return fail(500, 'db_error');
   }
 });
 
