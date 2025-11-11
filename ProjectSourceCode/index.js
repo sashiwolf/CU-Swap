@@ -377,14 +377,23 @@ app.delete('/delete-review/:id', async (req, res) => {
   });
 
   app.get("/success", (req, res) => {
-    res.render("success");
+    const { sellerId } = req.query;
+    res.render("success", { sellerId });
   });
+
 
   app.get("/error", (req, res) => {
     res.render("error");
   });
 
-  
+  app.get("/seller/:sellerId/reviews/new", (req, res) => {
+    const { sellerId } = req.params;
+
+    // TODO: optionally look up seller/listing info from DB here
+
+    res.render("pages/leaveReview", { sellerId });
+  });
+
 // *****************************************************
 // <!-- ADDED: Stripe/Handlebars Override for src/views (keeps existing config) -->
 // *****************************************************

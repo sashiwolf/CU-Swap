@@ -14,7 +14,9 @@
     const currency = "{{currency}}";
     const sellerAccountId = "{{sellerAccountId}}";
 
-    const stripe = Stripe(publishableKey);
+    const stripe = Stripe(publishableKey, {
+      stripeAccount: sellerAccountId
+    });
     const elements = stripe.elements();
     const card = elements.create("card");
     card.mount("#card-element");
@@ -66,7 +68,7 @@
         if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
           statusEl.textContent = "Payment successful! Redirecting…";
           statusEl.className = "mt-3 small text-success";
-          window.location.href = "/success";
+          window.location.href = "/success"+ encodeURIComponent(sellerAccountId);
         } else if (result.paymentIntent) {
           statusEl.textContent = "Payment status: " + result.paymentIntent.status;
           statusEl.className = "mt-3 small text-warning";
