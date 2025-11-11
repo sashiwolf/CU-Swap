@@ -47,20 +47,12 @@
           <div class="login-card rounded-4 shadow p-4 p-md-5">
             <h1 class="h2 fw-bold text-center mb-4" style="font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif; font-size: 50px;">Register</h1>
 
-            <form action="/register" method="POST">
+            <form action="/register" method="POST" novalidate>
               <div class="mb-3">
                 <label for="email" class="form-label fw-semibold">Email</label>
                 <input type="email" class="form-control" id="email" name="email"
-                       placeholder="abcd1234@colorado.edu" pattern="[a-z]{4}[0-9]{4}@colorado\.edu" title="Must be 4 letters + 4 digits + @colorado.edu" required>
-                <button type="button" id="sendCodeBtn" class="btn btn-secondary mt-2">Send Code</button>
-                <div id="sendCodeMsg" class="small mt-2"></div>
+                       placeholder="abcd1234@colorado.edu" required>
               </div>
-
-              <div class="mb-3">
-                <label class="form-label">Verification Code</label>
-                <input type="text" class="form-control" name="code" id="code" minlength="6" maxlength="6" required>
-              </div>
-
 
               <div class="mb-3">
                 <label for="username" class="form-label fw-semibold">Username</label>
@@ -70,8 +62,10 @@
 
               <div class="mb-3">
                 <label for="Phone" class="form-label fw-semibold">Phone</label>
-                <input type="text" class="form-control" id="Phone" name="Phone"
-                       placeholder="+00 00 000 0000" inputmode="tel" pattern="\+\d{11,15}" title="Must be + followed by 11 to 15 digits (No dashes or spaces)" required>
+                <input type="tel" class="form-control" id="Phone" name="Phone"
+                       placeholder="+00 00 000 0000" inputmode="tel" required>
+                <div class="invalid-feedback" id="phoneError">Please enter a valid phone number.</div>
+                <input type="hidden" id="phone_e164" name="phone_e164">
               </div>
 
               <div class="mb-2">
@@ -97,36 +91,3 @@
       </div>
     </div>
   </main>
-
-<script>
-document.getElementById('sendCodeBtn').addEventListener('click', async () => {
-  const emailI = document.getElementById('email');
-  const msgEl  = document.getElementById('sendCodeMsg');
-
-  if (!emailI.checkValidity()) {
-    emailI.reportValidity();
-    return;
-  }
-
-  const email = emailI.value.trim();
-
-  msgEl.textContent = 'Sending...';
-
-  try {
-    const res = await fetch('/send-code', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ email })
-    });
-
-    const data = await res.json();
-    msgEl.textContent = data.ok
-      ? 'Code sent! Check your inbox.'
-      : (data.msg || 'Failed to send');
-
-  } catch {
-    msgEl.textContent = 'Network error sending code.';
-  }
-});
-</script>
-
