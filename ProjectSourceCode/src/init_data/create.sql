@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   email VARCHAR(100) UNIQUE NOT NULL,
   phone_num VARCHAR(20) UNIQUE NOT NULL,
-  role VARCHAR(20) DEFAULT 'user'
+  role VARCHAR(20) DEFAULT 'user',
+  verified BOOLEAN NOT NULL DEFAULT false
 );
 
 -- LISTINGS TABLE
@@ -35,7 +36,8 @@ CREATE TABLE IF NOT EXISTS reviews (
 
 -- REVIEWS_TO_USER TABLE
 CREATE TABLE IF NOT EXISTS reviews_to_user (
-  review_id INT REFERENCES reviews(review_id) ON DELETE CASCADE,
-  user_id INT REFERENCES users(user_id) ON DELETE CASCADE,
-  PRIMARY KEY (review_id, user_id)
+  review_id   INT PRIMARY KEY REFERENCES reviews(review_id) ON DELETE CASCADE,
+  reviewer_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE, -- author
+  reviewee_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE, -- recipient
+  CONSTRAINT reviewer_ne_reviewee CHECK (reviewer_id <> reviewee_id)
 );
