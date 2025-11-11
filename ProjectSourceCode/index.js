@@ -363,6 +363,93 @@ app.get('/leave_review', (req, res) => {
   console.log('Session Data:', req.session);
   res.render('pages/leave_review', { hideNav: false });
 });
+app.engine(
+    "hbs",
+    exphbs.engine({
+      extname: ".hbs",
+      layoutsDir: path.join(__dirname, "views/layouts"),
+      defaultLayout: "main",
+      partialsDir: path.join(__dirname, "views/partials"),
+      helpers: {
+        formatCurrency: (amount, currency = "usd") => {
+          const value = (amount || 0) / 100;
+          try{
+            return new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: currency.toUpperCase()
+            }).format(value);
+          } catch {
+            return `$${value.toFixed(2)}`;
+          }
+        }
+      }
+    })
+  );
+  app.set("veiw engine", "hsb");
+  app.set("views", path.join(__dirname, "veiws"));
+
+  // Demo seller (connected account)
+  const DEMO_SELLER_ACCOUNT_ID = "acct_1SSNU62fkfKSGVIR"; // needs to be replaced with the acoual account of each person
+
+  app.get("/", (req, res) => {
+    res.redirect("/checkout");
+  });
+ // checkout out page with fixed amount for now later to be connected to the data base
+  app.get("/checkout", (req, res) => {
+    const amount = 2000; 
+    const currency = "usd"; 
+
+    res.render("checkout", {
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+      amount,
+      currency,
+      sellerAccountId: DEMO_SELLER_ACCOUNT_ID,
+      description: "Demom item description"
+    });
+  });
+
+app.post("/payments/create-intent", async (req, res) => {
+    try {
+      const {amount, currency, sellerAccountId } = req.body;
+
+      if(!sellerAccountId)
+      {
+        return res.status(400).json({ error: "Missing sellerAccountID"});
+      }
+      const paymentIntent = await stripe.paymentIntents.create(
+        {
+          amount, 
+          currency,
+          automatic_payment_methods: {enabled: true}
+        },
+        {
+          stripeAccount: sellerAccountId // direct charge
+        }
+      );
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (err) {
+      console.error("Error creating PaymentIntent:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/success", (req, res) => {
+    const { sellerId } = req.query;
+    res.render("success", { sellerId });
+  });
+
+
+  app.get("/error", (req, res) => {
+    res.render("error");
+  });
+
+  app.get("/seller/:sellerId/reviews/new", (req, res) => {
+    const { sellerId } = req.params;
+
+    // TODO: optionally look up seller/listing info from DB here
+
+    res.render("pages/leaveReview", { sellerId });
+});
 
 app.post('/leave_review', async (req, res) => {
   const { rating, review, username } = req.body;
@@ -443,7 +530,31 @@ app.get("/seller/:sellerId/reviews/new", (req, res) => {
   res.render("pages/leave_review", { sellerId });
 });
 
+app.engine(
+  "hbs",
+  exphbs.engine({
+    extname: ".hbs",
+    layoutsDir: path.join(__dirname, "src/views/layouts"),
+    defaultLayout: "main",
+    partialsDir: path.join(__dirname, "src/views/partials"),
+    helpers: {
+      formatCurrency: (amount, currency = "usd") => {
+        const value = (amount || 0) / 100;
+        try {
+          return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: currency.toUpperCase()
+          }).format(value);
+        } catch {
+          return `$${value.toFixed(2)}`;
+        }
+      }
+    }
+  })
+);
 
+app.set("view engine", "hbs");
+app.set("views", path.join(__dirname, "src/views"));
 // *****************************************************
 // <!-- Start Server-->
 // *****************************************************
