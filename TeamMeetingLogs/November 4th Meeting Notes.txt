@@ -1,0 +1,8 @@
+﻿* Talking about what we did and what we will do till next week. 
+* Hayden did the backend for the register and login page and leave reviews, and will continue to work on the front end for leave reviews. 
+* Sashi helped connect and write the backend and integration, and will work on the view reviews function. 
+* Shon did the front end, the login and  register page, and the handlebars, and will work on adding the admin into the website. 
+* Dylon did some Javascript that was scraped and looked into payment verification. 
+* Talked about branches and working in separate branches. 
+* Looked over the main branch and what is on the site right now. 
+* Talked about what each of us will do next week
