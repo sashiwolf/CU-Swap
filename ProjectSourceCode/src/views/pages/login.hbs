@@ -51,14 +51,12 @@
                        placeholder="abcd1234@colorado.edu" required>
               </div>
 
-              <div class="mb-2">
+              <div class="mb-3 position-relative">
                 <label for="password" class="form-label fw-semibold">Password</label>
                 <div class="input-group">
                   <input type="password" class="form-control" id="password" name="password"
                          placeholder="Enter your password" required>
-                  <button class="btn btn-outline-secondary" type="button" id="togglePassword">
-                    <span class="bi" id="eye">Show</span>
-                  </button>
+                  <button class="btn btn-outline-secondary" type="button" id="togglePassword">Show</button>
                 </div>
               </div>
 
@@ -83,3 +81,14 @@
       </div>
     </div>
   </main>
+
+<script>
+  const togglePassword = document.querySelector("#togglePassword");
+  const password = document.querySelector("#password");
+
+  togglePassword.addEventListener("click", () => {
+    const isPassword = password.getAttribute("type") === "password";
+    password.setAttribute("type", isPassword ? "text" : "password");
+    togglePassword.textContent = isPassword ? "Hide" : "Show";
+  });
+</script>
