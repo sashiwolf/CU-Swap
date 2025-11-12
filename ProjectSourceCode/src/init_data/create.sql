@@ -41,3 +41,5 @@ CREATE TABLE IF NOT EXISTS reviews_to_user (
   reviewee_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE, -- recipient
   CONSTRAINT reviewer_ne_reviewee CHECK (reviewer_id <> reviewee_id)
 );
+
+

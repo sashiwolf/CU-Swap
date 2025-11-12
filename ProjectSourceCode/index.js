@@ -518,6 +518,51 @@ app.get('/discover', async (req, res) => {
   }
 });
 
+
+
+
+
+app.get('/create_listing', (req, res) => {
+  res.render('pages/create_listing'); 
+});
+
+app.post('/create_listing',async(req, res) => {
+  console.log(req.body.title);
+  console.log(req.body.description);
+  console.log(req.body.price);
+  console.log(req.body.category);
+  console.log(req.body.image_url);
+  console.log(req.body.contact_info);
+  
+  try {
+    
+    //get user_id for current session
+    const currentSessionId = await db.oneOrNone(
+      'SELECT user_id FROM users WHERE username = $1',
+      [req.session.user.username]
+    );
+    console.log("got session id");
+    //insert listing into listings and get listing id
+    const listingID = await db.oneOrNone(
+      'INSERT INTO listing(title, description, price, category, image_url, contact_info) RETURNING listing_id', 
+      [req.body.title, req.body.description, 
+        req.body.price, req.body.category, req.body.image_url, 
+        req.body.contact_info]
+    );
+    console.log("inseted into listing")
+    //insert into users to listings
+    const ins = await db.query(
+      'INSERT INTO users_to_listings(user_id, listing_id)', 
+      [currentSessionId, listingID]
+    );
+    res.redirect('/discover');
+  } catch (err) {
+    res.redirect('/error');
+  }
+});
+
+
+
 app.get("/seller/:sellerId/reviews/new", (req, res) => {
   const { sellerId } = req.params;
 
@@ -529,6 +574,9 @@ app.get("/seller/:sellerId/reviews/new", (req, res) => {
   // Render your review form view
   res.render("pages/leave_review", { sellerId });
 });
+
+
+
 
 app.engine(
   "hbs",
@@ -552,6 +600,7 @@ app.engine(
     }
   })
 );
+
 
 app.set("view engine", "hbs");
 app.set("views", path.join(__dirname, "src/views"));
