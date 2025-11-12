@@ -1,26 +1,36 @@
-<!--To do: main grid-->
+{{!< main }}
+
 <main>
-    <div class="container py-4">
-        <div class="row row-cols-1 row-cols-md-3 g-4">
+  <div class="container py-4">
+    <div class="row row-cols-1 row-cols-md-3 g-4">
 
-            {{#each listings}}
+      {{#each listings}}
+      <div class="col">
+        <div class="card h-100 shadow-sm">
+          <img
+            src="{{this.image_url}}"
+            class="card-img-top"
+            alt="{{this.title}} thumbnail"
+            style="height:200px; object-fit:cover;"
+          >
 
-            <div class="col">
-                <div class="card h-100 shadow-sm">
-                    <img src="{{this.image_url}}" class="card-img-top" alt="{{this.title}} thumbnail"
-                        style="height: 200px; object-fit: cover;">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title text-primary mb-2">{{this.title}}</h5>
 
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title text-primary">{{this.title}}</h5>
+            <h4 class="card-subtitle mt-auto text-success">
+              <strong>${{this.price}}</strong>
+            </h4>
 
-                        <h4 class="card-subtitle mb-2 text-success mt-auto">
-                            <strong>${{this.price}}</strong>
-                        </h4>
-                    </div>
-                </div>
-            </div>
-            {{/each}}
-
+            <a
+              href="/listings/{{this.listing_id}}"
+              class="stretched-link"
+              aria-label="View {{this.title}}"
+            ></a>
+          </div>
         </div>
+      </div>
+      {{/each}}
+
     </div>
+  </div>
 </main>
