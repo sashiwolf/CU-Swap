@@ -151,7 +151,7 @@ SELECT r2.review_id, ids.reviewer_id, ids.reviewee_id FROM r2, ids;
 -- user6 → user3
 WITH r3 AS (
   INSERT INTO reviews (rating, actual_review)
-  VALUES (5, 'Review would go here')
+  VALUES (3, 'Review would go here')
   RETURNING review_id
 ),
 ids AS (
@@ -165,7 +165,7 @@ SELECT r3.review_id, ids.reviewer_id, ids.reviewee_id FROM r3, ids;
 -- user1 → user4
 WITH r4 AS (
   INSERT INTO reviews (rating, actual_review)
-  VALUES (5, 'Review would go here')
+  VALUES (2, 'Review would go here')
   RETURNING review_id
 ),
 ids AS (
@@ -179,7 +179,7 @@ SELECT r4.review_id, ids.reviewer_id, ids.reviewee_id FROM r4, ids;
 -- user5 → user4
 WITH r5 AS (
   INSERT INTO reviews (rating, actual_review)
-  VALUES (4, 'Review would go here')
+  VALUES (1, 'Review would go here')
   RETURNING review_id
 ),
 ids AS (
