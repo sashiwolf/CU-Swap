@@ -1,6 +1,12 @@
 <h2 class="mb-3">Checkout</h2>
 <p class="mb-4">
-  {{description}}<br>
+  {{#if itemTitle}}
+    <strong>Item:</strong> {{itemTitle}}<br>
+  {{/if}}
+  <strong>Charge:</strong> {{formatCurrency amount currency}}<br>
+  {{#if description}}
+    <span class="text-muted">{{description}}</span><br>
+  {{/if}}
   <strong>Seller Account:</strong> {{sellerAccountId}}
 </p>
 

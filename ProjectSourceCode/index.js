@@ -394,17 +394,64 @@ app.engine(
   app.get("/", (req, res) => {
     res.redirect("/checkout");
   });
- // checkout out page with fixed amount for now later to be connected to the data base
-  app.get("/checkout", (req, res) => {
-    const amount = 2000; 
-    const currency = "usd"; 
+ // checkout page - optionally tied to a specific listing
+  app.get("/checkout", async (req, res) => {
+    const currency = "usd";
+    let amount = 2000;
+    let description = "Demo item description";
+    let itemTitle = "Demo item";
+    let sellerAccountId = DEMO_SELLER_ACCOUNT_ID;
+
+    const listingId = Number(req.query.listingId);
+    if (Number.isInteger(listingId)) {
+      try {
+        const listing = await db.oneOrNone(
+          `
+            SELECT
+              l.listing_id,
+              l.title,
+              l.description,
+              l.price,
+              u.username AS seller_name
+            FROM listings l
+            LEFT JOIN users_to_listings utl ON utl.listing_id = l.listing_id
+            LEFT JOIN users u ON u.user_id = utl.user_id
+            WHERE l.listing_id = $1
+          `,
+          [listingId]
+        );
+
+        if (listing) {
+          const priceNumber = Number(listing.price);
+          if (!Number.isNaN(priceNumber) && priceNumber > 0) {
+            amount = Math.round(priceNumber * 100);
+          }
+
+          itemTitle = listing.title || itemTitle;
+          description = listing.description || `Purchase of ${listing.title || 'listing'}`;
+          if (listing.seller_name) {
+            description = `${itemTitle} from ${listing.seller_name}`;
+          }
+        }
+      } catch (err) {
+        console.error("Error loading listing for checkout:", err);
+      }
+    }
+
+    req.session.checkout = {
+      listingId: Number.isInteger(listingId) ? listingId : null,
+      amount,
+      currency,
+      sellerAccountId
+    };
 
     res.render("checkout", {
       publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
       amount,
       currency,
-      sellerAccountId: DEMO_SELLER_ACCOUNT_ID,
-      description: "Demom item description"
+      sellerAccountId,
+      description,
+      itemTitle
     });
   });
 
@@ -503,18 +550,77 @@ app.post('/leave_review', async (req, res) => {
   }
 });
 
-//Discover page
+// Discover page
 app.get('/discover', async (req, res) => {
   try {
     const listings = await db.any(`
-        SELECT title, price, category, image_url
-        FROM listings
-        LIMIT 50
+      SELECT listing_id, title, price, category, image_url
+      FROM listings
+      ORDER BY listing_id DESC
+      LIMIT 50
     `);
 
     res.render('pages/discover', { listings });
   } catch (err) {
-    console.error();
+    console.error('Error loading listings:', err);
+    res.render('pages/discover', { listings: [] });
+  }
+});
+
+// Listing page
+app.get('/listings/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    return res.status(400).send('Bad id');
+  }
+
+  try {
+    const listing = await db.oneOrNone(
+      `
+        SELECT
+          l.listing_id,
+          l.title,
+          l.description,
+          l.price,
+          l.category,
+          l.image_url,
+          l.contact_info,
+          u.user_id   AS seller_id,
+          u.username  AS seller_name,
+          u.email     AS seller_email,
+          u.phone_num AS seller_phone
+        FROM listings l
+        LEFT JOIN users_to_listings utl ON utl.listing_id = l.listing_id
+        LEFT JOIN users u ON u.user_id = utl.user_id
+        WHERE l.listing_id = $1
+      `,
+      [id]
+    );
+
+    if (!listing) {
+      return res.status(404).send('Not found');
+    }
+
+    const reviews = await db.any(
+      `
+        SELECT
+          r.review_id,
+          r.rating,
+          r.actual_review,
+          reviewer.username AS reviewer_name
+        FROM reviews_to_user rtu
+        JOIN reviews r ON r.review_id = rtu.review_id
+        JOIN users reviewer ON reviewer.user_id = rtu.reviewer_id
+        WHERE rtu.reviewee_id = $1
+        ORDER BY r.review_id DESC
+      `,
+      [listing.seller_id]
+    );
+
+    res.render('pages/listing', { listing, reviews });
+  } catch (err) {
+    console.error('Error loading listing:', err);
+    res.status(500).render('error', { message: 'Unable to load listing right now.' });
   }
 });
 
@@ -548,7 +654,16 @@ app.engine(
         } catch {
           return `$${value.toFixed(2)}`;
         }
-      }
+      },
+      times: function (count, options) {
+        let output = "";
+        const iterations = Math.max(0, Number(count) || 0);
+        for (let i = 0; i < iterations; i += 1) {
+          output += options.fn(this);
+        }
+        return output;
+      },
+      subtract: (a, b) => (Number(a) || 0) - (Number(b) || 0)
     }
   })
 );

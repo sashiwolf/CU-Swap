@@ -1,0 +1,78 @@
+<main class="container py-4">
+  <a href="/discover" class="btn btn-link mb-3">&larr; Back to Discover</a>
+
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="rounded shadow-sm overflow-hidden">
+        <img
+          src="{{listing.image_url}}"
+          alt="{{listing.title}} image"
+          class="w-100"
+          style="object-fit:cover; max-height:400px;"
+        >
+      </div>
+    </div>
+
+    <div class="col-md-6 d-flex flex-column gap-3">
+      <div>
+        <h1 class="fw-bold">{{listing.title}}</h1>
+        <p class="fs-3 text-success mb-1">${{listing.price}}</p>
+      </div>
+
+      {{#if listing.category}}
+        <span class="badge bg-secondary align-self-start">{{listing.category}}</span>
+      {{/if}}
+
+      <p class="lead">{{listing.description}}</p>
+
+      <div class="border-top pt-3">
+        <h5>Seller Contact</h5>
+        {{#if listing.seller_name}}
+          <p class="mb-1"><strong>Name:</strong> {{listing.seller_name}}</p>
+        {{/if}}
+        {{#if listing.seller_email}}
+          <p class="mb-1">
+            <strong>Email:</strong>
+            <a href="mailto:{{listing.seller_email}}">{{listing.seller_email}}</a>
+          </p>
+        {{/if}}
+        {{#if listing.seller_phone}}
+          <p class="mb-0"><strong>Phone:</strong> {{listing.seller_phone}}</p>
+        {{/if}}
+      </div>
+
+      <form action="/checkout" method="get" class="mt-3">
+        <input type="hidden" name="listingId" value="{{listing.listing_id}}">
+        <button type="submit" class="btn btn-primary btn-lg w-100">
+          Buy Now for ${{listing.price}}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <section class="mt-5">
+    <h2 class="h4">Seller Reviews</h2>
+
+    {{#if reviews.length}}
+      <div class="list-group">
+        {{#each reviews}}
+          <article class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="fw-semibold">{{this.reviewer_name}}</div>
+              <div class="text-warning">
+                {{#times this.rating}}★{{/times}}
+                {{#times (subtract 5 this.rating)}}☆{{/times}}
+              </div>
+            </div>
+            {{#if this.created_at}}
+              <small class="text-muted">{{this.created_at}}</small>
+            {{/if}}
+            <p class="mb-0 mt-2">{{this.actual_review}}</p>
+          </article>
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="text-muted fst-italic">This seller hasn’t received reviews yet.</p>
+    {{/if}}
+  </section>
+</main>
