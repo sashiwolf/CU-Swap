@@ -445,7 +445,7 @@ app.engine(
       sellerAccountId
     };
 
-    res.render("checkout", {
+    res.render("pages/checkout", {
       publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
       amount,
       currency,
@@ -482,12 +482,12 @@ app.post("/payments/create-intent", async (req, res) => {
 
   app.get("/success", (req, res) => {
     const { sellerId } = req.query;
-    res.render("success", { sellerId });
+    res.render("pages/success", { sellerId });
   });
 
 
   app.get("/error", (req, res) => {
-    res.render("error");
+    res.render("pages/error");
   });
 
   app.get("/seller/:sellerId/reviews/new", (req, res) => {
@@ -620,7 +620,7 @@ app.get('/listings/:id', async (req, res) => {
     res.render('pages/listing', { listing, reviews });
   } catch (err) {
     console.error('Error loading listing:', err);
-    res.status(500).render('error', { message: 'Unable to load listing right now.' });
+    res.status(500).render('pages/error', { message: 'Unable to load listing right now.' });
   }
 });
 
