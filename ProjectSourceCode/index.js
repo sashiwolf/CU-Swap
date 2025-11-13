@@ -557,7 +557,10 @@ app.post('/create_listing',async(req, res) => {
     );
     res.redirect('/discover');
   } catch (err) {
-    res.redirect('/error');
+    console.error("create_listing failed:", err);
+    return res.status(400).render("pages/create_listing", {
+    error: "Could not create listing. Please fix the highlighted fields."
+  });
   }
 });
 
