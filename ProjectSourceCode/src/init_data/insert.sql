@@ -189,3 +189,10 @@ ids AS (
 )
 INSERT INTO reviews_to_user (review_id, reviewer_id, reviewee_id)
 SELECT r5.review_id, ids.reviewer_id, ids.reviewee_id FROM r5, ids;
+
+
+--insert categorys for items inot categorys table
+INSERT INTO category (categorys) VALUES ('School supplies');
+INSERT INTO category (categorys) VALUES ('Books');
+INSERT INTO category (categorys) VALUES ('Outdoor gear');
+INSERT INTO category (categorys) VALUES ('Miscellaneous');
