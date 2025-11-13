@@ -449,6 +449,7 @@ app.engine(
               l.title,
               l.description,
               l.price,
+              l.is_sold,
               u.user_id AS seller_user_id,
               u.username AS seller_name
             FROM listings l
@@ -460,6 +461,9 @@ app.engine(
         );
 
         if (listing) {
+          if (listing.is_sold) {
+            return res.redirect('/discover?sold=1');
+          }
           const priceNumber = Number(listing.price);
           if (!Number.isNaN(priceNumber) && priceNumber > 0) {
             amount = Math.round(priceNumber * 100);
@@ -499,13 +503,23 @@ app.engine(
     });
   });
 
-app.post("/payments/create-intent", async (req, res) => {
+  app.post("/payments/create-intent", async (req, res) => {
     try {
       const {amount, currency, sellerAccountId } = req.body;
+      const listingId = req.session.checkout?.listingId;
 
       if(!sellerAccountId)
       {
         return res.status(400).json({ error: "Missing sellerAccountID"});
+      }
+      if (listingId) {
+        const listing = await db.oneOrNone(
+          'SELECT is_sold FROM listings WHERE listing_id = $1',
+          [listingId]
+        );
+        if (listing && listing.is_sold) {
+          return res.status(409).json({ error: "This item has already been purchased." });
+        }
       }
       const paymentIntent = await stripe.paymentIntents.create(
         {
@@ -524,10 +538,21 @@ app.post("/payments/create-intent", async (req, res) => {
     }
   });
 
-  app.get("/success", (req, res) => {
+  app.get("/success", async (req, res) => {
     const { sellerId } = req.query;
-    const sellerUserId = req.session.checkout?.sellerUserId || null;
-    const sellerUsername = req.session.checkout?.sellerUsername || null;
+    const checkoutContext = req.session.checkout || {};
+    const sellerUserId = checkoutContext.sellerUserId || null;
+    const sellerUsername = checkoutContext.sellerUsername || null;
+    const purchasedListingId = checkoutContext.listingId;
+
+    if (purchasedListingId) {
+      try {
+        await db.none('UPDATE listings SET is_sold = TRUE WHERE listing_id = $1', [purchasedListingId]);
+        checkoutContext.listingId = null;
+      } catch (err) {
+        console.error('Failed to mark listing as sold:', err);
+      }
+    }
 
     if (sellerUserId) {
       if (!req.session.paidSellers) {
@@ -652,18 +677,20 @@ app.post('/leave_review', async (req, res) => {
 
 // Discover page
 app.get('/discover', async (req, res) => {
+  const notice = req.query.sold ? 'Sorry, that item has already been purchased.' : null;
   try {
     const listings = await db.any(`
       SELECT listing_id, title, price, category, image_url
       FROM listings
+      WHERE is_sold = FALSE
       ORDER BY listing_id DESC
       LIMIT 50
     `);
 
-    res.render('pages/discover', { listings });
+    res.render('pages/discover', { listings, notice });
   } catch (err) {
     console.error('Error loading listings:', err);
-    res.render('pages/discover', { listings: [] });
+    res.render('pages/discover', { listings: [], notice });
   }
 });
 
@@ -685,6 +712,7 @@ app.get('/listings/:id', async (req, res) => {
           l.category,
           l.image_url,
           l.contact_info,
+          l.is_sold,
           u.user_id   AS seller_id,
           u.username  AS seller_name,
           u.email     AS seller_email,
