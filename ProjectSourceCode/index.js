@@ -624,6 +624,59 @@ app.get('/listings/:id', async (req, res) => {
   }
 });
 
+
+
+
+
+app.get('/create_listing', (req, res) => {
+  res.render('pages/create_listing'); 
+});
+
+
+
+app.post('/create_listing', async (req, res) => {
+  console.log(req.body.title);
+  console.log(req.body.description);
+  console.log(req.body.price);
+  console.log(req.body.category);
+  console.log(req.body.image_url);
+  console.log(req.body.contact_info);
+  
+  if (!req.session.user || !req.session.user.username) {
+    return res.status(401).render('pages/create_listing', {
+      error: 'You must be logged in to create a listing.'
+    });
+  }
+
+  try {
+    const { user_id } = await db.one(
+      'SELECT user_id FROM users WHERE username = $1',
+      [req.session.user.username]
+    );
+
+    const { listing_id } = await db.one(
+      `INSERT INTO listings (title, description, price, category, image_url, contact_info)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING listing_id`,
+      [req.body.title, req.body.description, req.body.price, req.body.category, req.body.image_url, req.body.contact_info]
+    );
+
+    await db.none(
+      'INSERT INTO users_to_listings (user_id, listing_id) VALUES ($1,$2)',
+      [user_id, listing_id]
+    );
+
+    res.redirect('/discover');
+  } catch (err) {
+    console.error('create_listing failed:', err);
+    res.status(400).render('pages/create_listing', {
+      error: 'Could not create listing. Please fix the highlighted fields.'
+    });
+  }
+});
+
+
+
 app.get("/seller/:sellerId/reviews/new", (req, res) => {
   const { sellerId } = req.params;
 
@@ -635,6 +688,9 @@ app.get("/seller/:sellerId/reviews/new", (req, res) => {
   // Render your review form view
   res.render("pages/leave_review", { sellerId });
 });
+
+
+
 
 app.engine(
   "hbs",
@@ -667,6 +723,7 @@ app.engine(
     }
   })
 );
+
 
 app.set("view engine", "hbs");
 app.set("views", path.join(__dirname, "src/views"));
