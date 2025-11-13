@@ -269,6 +269,28 @@ const auth = (req, res, next) => {
 // // Authentication Required
  app.use(auth);
 
+//Profile page
+app.get('/profile', async (req, res) => {
+  try {
+    const userInfo = await db.oneOrNone(
+      `SELECT username, email, phone_num
+       FROM users
+       WHERE username = $1`,
+      [req.session.user.username]
+    );
+
+    if (!userInfo) {
+      // No user found
+      return res.status(404).render('pages/profile', { error: 'User not found.' });
+    }
+
+    res.render('pages/profile', userInfo);
+  } catch (err) {
+    console.error('Profile route error:', err);
+    res.status(500).render('pages/error', { error: 'Could not load profile.' });
+  }
+});
+
 // Logout
 app.get('/logout', (req, res) => {
   req.session.destroy(err => {
