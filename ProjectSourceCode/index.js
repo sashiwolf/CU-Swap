@@ -359,9 +359,44 @@ app.delete('/delete-review/:id', async (req, res) => {
   }
 });
 
-app.get('/leave_review', (req, res) => {
-  console.log('Session Data:', req.session);
-  res.render('pages/leave_review', { hideNav: false });
+app.get('/leave_review', async (req, res) => {
+  const sellerId = Number(req.query.sellerId);
+
+  if (!Number.isInteger(sellerId)) {
+    return res.status(400).render('pages/leave_review', {
+      hideNav: false,
+      error: 'Missing seller information. Please access this page from your purchase confirmation.'
+    });
+  }
+
+  if (!req.session.paidSellers || !req.session.paidSellers[String(sellerId)]) {
+    return res.status(403).render('pages/leave_review', {
+      hideNav: false,
+      error: 'You can only review sellers you have successfully purchased from.'
+    });
+  }
+
+  try {
+    const seller = await db.oneOrNone('SELECT username FROM users WHERE user_id = $1', [sellerId]);
+    if (!seller) {
+      return res.status(404).render('pages/leave_review', {
+        hideNav: false,
+        error: 'Seller not found.'
+      });
+    }
+
+    res.render('pages/leave_review', {
+      hideNav: false,
+      sellerId,
+      sellerUsername: seller.username
+    });
+  } catch (err) {
+    console.error('Error loading seller for review:', err);
+    res.status(500).render('pages/leave_review', {
+      hideNav: false,
+      error: 'Unable to load seller information right now.'
+    });
+  }
 });
 app.engine(
     "hbs",
@@ -385,8 +420,8 @@ app.engine(
       }
     })
   );
-  app.set("veiw engine", "hsb");
-  app.set("views", path.join(__dirname, "veiws"));
+  app.set("views engine", "hsb");
+  app.set("views", path.join(__dirname, "views"));
 
   // Demo seller (connected account)
   const DEMO_SELLER_ACCOUNT_ID = "acct_1SSNU62fkfKSGVIR"; // needs to be replaced with the acoual account of each person
@@ -401,6 +436,8 @@ app.engine(
     let description = "Demo item description";
     let itemTitle = "Demo item";
     let sellerAccountId = DEMO_SELLER_ACCOUNT_ID;
+    let sellerUserId = null;
+    let sellerUsername = null;
 
     const listingId = Number(req.query.listingId);
     if (Number.isInteger(listingId)) {
@@ -412,6 +449,8 @@ app.engine(
               l.title,
               l.description,
               l.price,
+              l.is_sold,
+              u.user_id AS seller_user_id,
               u.username AS seller_name
             FROM listings l
             LEFT JOIN users_to_listings utl ON utl.listing_id = l.listing_id
@@ -422,6 +461,9 @@ app.engine(
         );
 
         if (listing) {
+          if (listing.is_sold) {
+            return res.redirect('/discover?sold=1');
+          }
           const priceNumber = Number(listing.price);
           if (!Number.isNaN(priceNumber) && priceNumber > 0) {
             amount = Math.round(priceNumber * 100);
@@ -431,6 +473,10 @@ app.engine(
           description = listing.description || `Purchase of ${listing.title || 'listing'}`;
           if (listing.seller_name) {
             description = `${itemTitle} from ${listing.seller_name}`;
+            sellerUsername = listing.seller_name;
+          }
+          if (listing.seller_user_id) {
+            sellerUserId = listing.seller_user_id;
           }
         }
       } catch (err) {
@@ -442,10 +488,12 @@ app.engine(
       listingId: Number.isInteger(listingId) ? listingId : null,
       amount,
       currency,
-      sellerAccountId
+      sellerAccountId,
+      sellerUserId,
+      sellerUsername
     };
 
-    res.render("checkout", {
+    res.render("pages/checkout", {
       publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
       amount,
       currency,
@@ -455,13 +503,23 @@ app.engine(
     });
   });
 
-app.post("/payments/create-intent", async (req, res) => {
+  app.post("/payments/create-intent", async (req, res) => {
     try {
       const {amount, currency, sellerAccountId } = req.body;
+      const listingId = req.session.checkout?.listingId;
 
       if(!sellerAccountId)
       {
         return res.status(400).json({ error: "Missing sellerAccountID"});
+      }
+      if (listingId) {
+        const listing = await db.oneOrNone(
+          'SELECT is_sold FROM listings WHERE listing_id = $1',
+          [listingId]
+        );
+        if (listing && listing.is_sold) {
+          return res.status(409).json({ error: "This item has already been purchased." });
+        }
       }
       const paymentIntent = await stripe.paymentIntents.create(
         {
@@ -480,90 +538,159 @@ app.post("/payments/create-intent", async (req, res) => {
     }
   });
 
-  app.get("/success", (req, res) => {
+  app.get("/success", async (req, res) => {
     const { sellerId } = req.query;
-    res.render("success", { sellerId });
+    const checkoutContext = req.session.checkout || {};
+    const sellerUserId = checkoutContext.sellerUserId || null;
+    const sellerUsername = checkoutContext.sellerUsername || null;
+    const purchasedListingId = checkoutContext.listingId;
+
+    if (purchasedListingId) {
+      try {
+        await db.none('UPDATE listings SET is_sold = TRUE WHERE listing_id = $1', [purchasedListingId]);
+        checkoutContext.listingId = null;
+      } catch (err) {
+        console.error('Failed to mark listing as sold:', err);
+      }
+    }
+
+    if (sellerUserId) {
+      if (!req.session.paidSellers) {
+        req.session.paidSellers = {};
+      }
+      req.session.paidSellers[String(sellerUserId)] = true;
+    }
+
+    res.render("pages/success", {
+      canReview: Boolean(sellerUserId),
+      reviewUrl: sellerUserId ? `/leave_review?sellerId=${sellerUserId}` : null,
+      sellerUsername
+    });
   });
 
 
   app.get("/error", (req, res) => {
-    res.render("error");
+    res.render("pages/error");
   });
 
   app.get("/seller/:sellerId/reviews/new", (req, res) => {
     const { sellerId } = req.params;
 
-    // TODO: optionally look up seller/listing info from DB here
+    if (!req.session.paidSellers || !req.session.paidSellers[String(sellerId)]) {
+      return res.status(403).send("You can only leave a review after a successful purchase from this seller.");
+    }
 
-    res.render("pages/leaveReview", { sellerId });
+    res.redirect(`/leave_review?sellerId=${sellerId}`);
 });
 
 app.post('/leave_review', async (req, res) => {
-  const { rating, review, username } = req.body;
+  const { rating, review, sellerId } = req.body;
+  const parsedSellerId = Number(sellerId);
+  let sellerRow;
 
-  if (!rating || !review || !username) {
-    return res.status(400).render('pages/leave_review', { error: 'All fields are required.' });
+  if (!rating || !review || !sellerId) {
+    return res.status(400).render('pages/leave_review', {
+      error: 'All fields are required.',
+      sellerId
+    });
+  }
+
+  if (!Number.isInteger(parsedSellerId)) {
+    return res.status(400).render('pages/leave_review', {
+      error: 'Invalid seller information provided.',
+      sellerId
+    });
+  }
+
+  if (!req.session.user || !req.session.user.username) {
+    return res.status(401).render('pages/leave_review', {
+      error: 'You must be logged in to leave a review.',
+      sellerId
+    });
+  }
+
+  if (!req.session.paidSellers || !req.session.paidSellers[String(parsedSellerId)]) {
+    return res.status(403).render('pages/leave_review', {
+      error: 'You can only review sellers you have purchased from.',
+      sellerId
+    });
   }
 
   try {
-    //get user_id for provided username
-    const userRow = await db.oneOrNone(
-      'SELECT user_id FROM users WHERE username = $1',
-      [username]
+    sellerRow = await db.oneOrNone(
+      'SELECT user_id, username FROM users WHERE user_id = $1',
+      [parsedSellerId]
     );
-    if (!userRow) {
-      return res.status(404).render('pages/leave_review', { error: 'User not found.' });
+    if (!sellerRow) {
+      return res.status(404).render('pages/leave_review', {
+        error: 'Seller not found.',
+        sellerId
+      });
     }
     
-    //get user_id for current session
     const sessionRow = await db.oneOrNone(
       'SELECT user_id FROM users WHERE username = $1',
       [req.session.user.username]
     );
     if (!sessionRow) {
-      return res.status(404).render('pages/leave_review', { error: 'User not found.' });
+      return res.status(404).render('pages/leave_review', {
+        error: 'User not found.',
+        sellerId
+      });
     }
     
-    //check whether user is trying to leave review for themselves. Dont insert and print error message
-    if(userRow.user_id == sessionRow.user_id)
-    {
-      return res.status(404).render('pages/leave_review', { error: 'You cannot leave a review for yourself' });
+    if (sellerRow.user_id === sessionRow.user_id) {
+      return res.status(400).render('pages/leave_review', {
+        error: 'You cannot leave a review for yourself.',
+        sellerId
+      });
     }
 
-    //insert into review
     const insertedReview = await db.one(
       'INSERT INTO reviews (rating, actual_review) VALUES ($1, $2) RETURNING review_id',
       [rating, review]
     );
     
-    
-    //insert join table
     await db.none(
       'INSERT INTO reviews_to_user (review_id, reviewer_id, reviewee_id) VALUES ($1, $2, $3)',
-      [insertedReview.review_id, sessionRow.user_id, userRow.user_id]
+      [insertedReview.review_id, sessionRow.user_id, sellerRow.user_id]
     );
 
-    res.render('pages/leave_review', { success: 'Review submitted!' });
+    if (req.session.paidSellers) {
+      delete req.session.paidSellers[String(parsedSellerId)];
+    }
+    if (req.session.checkout && req.session.checkout.sellerUserId === parsedSellerId) {
+      req.session.checkout.sellerUserId = null;
+      req.session.checkout.sellerUsername = null;
+    }
+
+    return res.redirect('/discover');
   } catch (err) {
     console.error('Error inserting review:', err);
-    res.status(500).render('pages/leave_review', { error: 'Could not save your review.' });
+    res.status(500).render('pages/leave_review', {
+      error: 'Could not save your review.',
+      sellerId,
+      sellerUsername: sellerRow ? sellerRow.username : undefined
+    });
   }
 });
 
 // Discover page
 app.get('/discover', async (req, res) => {
+  const notice = req.query.sold ? 'Sorry, that item has already been purchased.' : null;
   try {
     const listings = await db.any(`
       SELECT listing_id, title, price, category, image_url
       FROM listings
+      WHERE is_sold = FALSE
       ORDER BY listing_id DESC
       LIMIT 50
     `);
 
-    res.render('pages/discover', { listings });
+    res.render('pages/discover', { listings, notice });
   } catch (err) {
     console.error('Error loading listings:', err);
-    res.render('pages/discover', { listings: [] });
+    res.render('pages/discover', { listings: [], notice });
   }
 });
 
@@ -585,6 +712,7 @@ app.get('/listings/:id', async (req, res) => {
           l.category,
           l.image_url,
           l.contact_info,
+          l.is_sold,
           u.user_id   AS seller_id,
           u.username  AS seller_name,
           u.email     AS seller_email,
@@ -620,7 +748,7 @@ app.get('/listings/:id', async (req, res) => {
     res.render('pages/listing', { listing, reviews });
   } catch (err) {
     console.error('Error loading listing:', err);
-    res.status(500).render('error', { message: 'Unable to load listing right now.' });
+    res.status(500).render('pages/error', { message: 'Unable to load listing right now.' });
   }
 });
 

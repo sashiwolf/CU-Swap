@@ -1,0 +1,21 @@
+<h2>✅ Payment Successful</h2>
+<p>Your payment went directly to the seller’s connected Stripe account.</p>
+
+{{#if canReview}}
+  <p class="text-success mb-3">
+    {{#if sellerUsername}}
+      You can now leave a review for <strong>@{{sellerUsername}}</strong>.
+    {{else}}
+      You can now leave a review for this seller.
+    {{/if}}
+  </p>
+  <div class="mt-4">
+    <a href="{{reviewUrl}}" class="btn btn-primary">
+      {{#if sellerUsername}}
+        Leave a Review for {{sellerUsername}}
+      {{else}}
+        Leave a Review
+      {{/if}}
+    </a>
+  </div>
+{{/if}}
