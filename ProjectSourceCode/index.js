@@ -526,7 +526,9 @@ app.get('/create_listing', (req, res) => {
   res.render('pages/create_listing'); 
 });
 
-app.post('/create_listing',async(req, res) => {
+
+
+app.post('/create_listing', async (req, res) => {
   console.log(req.body.title);
   console.log(req.body.description);
   console.log(req.body.price);
@@ -534,33 +536,36 @@ app.post('/create_listing',async(req, res) => {
   console.log(req.body.image_url);
   console.log(req.body.contact_info);
   
+  if (!req.session.user || !req.session.user.username) {
+    return res.status(401).render('pages/create_listing', {
+      error: 'You must be logged in to create a listing.'
+    });
+  }
+
   try {
-    
-    //get user_id for current session
-    const currentSessionId = await db.oneOrNone(
+    const { user_id } = await db.one(
       'SELECT user_id FROM users WHERE username = $1',
       [req.session.user.username]
     );
-    console.log("got session id");
-    //insert listing into listings and get listing id
-    const listingID = await db.oneOrNone(
-      'INSERT INTO listing(title, description, price, category, image_url, contact_info) RETURNING listing_id', 
-      [req.body.title, req.body.description, 
-        req.body.price, req.body.category, req.body.image_url, 
-        req.body.contact_info]
+
+    const { listing_id } = await db.one(
+      `INSERT INTO listings (title, description, price, category, image_url, contact_info)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING listing_id`,
+      [req.body.title, req.body.description, req.body.price, req.body.category, req.body.image_url, req.body.contact_info]
     );
-    console.log("inseted into listing")
-    //insert into users to listings
-    const ins = await db.query(
-      'INSERT INTO users_to_listings(user_id, listing_id)', 
-      [currentSessionId, listingID]
+
+    await db.none(
+      'INSERT INTO users_to_listings (user_id, listing_id) VALUES ($1,$2)',
+      [user_id, listing_id]
     );
+
     res.redirect('/discover');
   } catch (err) {
-    console.error("create_listing failed:", err);
-    return res.status(400).render("pages/create_listing", {
-    error: "Could not create listing. Please fix the highlighted fields."
-  });
+    console.error('create_listing failed:', err);
+    res.status(400).render('pages/create_listing', {
+      error: 'Could not create listing. Please fix the highlighted fields.'
+    });
   }
 });
 
