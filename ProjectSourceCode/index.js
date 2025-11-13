@@ -631,11 +631,15 @@ app.post('/leave_review', async (req, res) => {
       [insertedReview.review_id, sessionRow.user_id, sellerRow.user_id]
     );
 
-    res.render('pages/leave_review', {
-      success: 'Review submitted!',
-      sellerId,
-      sellerUsername: sellerRow.username
-    });
+    if (req.session.paidSellers) {
+      delete req.session.paidSellers[String(parsedSellerId)];
+    }
+    if (req.session.checkout && req.session.checkout.sellerUserId === parsedSellerId) {
+      req.session.checkout.sellerUserId = null;
+      req.session.checkout.sellerUsername = null;
+    }
+
+    return res.redirect('/discover');
   } catch (err) {
     console.error('Error inserting review:', err);
     res.status(500).render('pages/leave_review', {
