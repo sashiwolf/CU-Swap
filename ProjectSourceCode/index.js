@@ -385,8 +385,8 @@ app.engine(
       }
     })
   );
-  app.set("veiw engine", "hsb");
-  app.set("views", path.join(__dirname, "veiws"));
+  app.set("views engine", "hsb");
+  app.set("views", path.join(__dirname, "views"));
 
   // Demo seller (connected account)
   const DEMO_SELLER_ACCOUNT_ID = "acct_1SSNU62fkfKSGVIR"; // needs to be replaced with the acoual account of each person
@@ -482,7 +482,7 @@ app.post("/payments/create-intent", async (req, res) => {
 
   app.get("/success", (req, res) => {
     const { sellerId } = req.query;
-    res.render("pages/success", { sellerId });
+    res.render("pages/success", { sellerId, canReview: true });
   });
 
 
