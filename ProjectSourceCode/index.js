@@ -29,6 +29,8 @@ const hbs = handlebars.create({
   partialsDir: path.join(__dirname, 'src/views/partials'),
 });
 
+hbs.handlebars.registerHelper('eq', (a, b) => a === b);
+
 dotenv.config(); 
 // database configuration
 const dbConfig = {
@@ -677,20 +679,47 @@ app.post('/leave_review', async (req, res) => {
 
 // Discover page
 app.get('/discover', async (req, res) => {
-  const notice = req.query.sold ? 'Sorry, that item has already been purchased.' : null;
   try {
-    const listings = await db.any(`
+    const categoryFilter = req.query.category || null;
+    const notice = req.query.notice || null;
+
+    const params = [];
+    let listingsQuery = `
       SELECT listing_id, title, price, category, image_url
       FROM listings
-      WHERE is_sold = FALSE
+    `;
+
+    if (categoryFilter) {
+      listingsQuery += `
+        WHERE category = $1
+          AND is_sold = FALSE
+      `;
+      params.push(categoryFilter);
+    } else {
+      listingsQuery += `
+        WHERE is_sold = FALSE
+      `;
+    }
+
+    listingsQuery += `
       ORDER BY listing_id DESC
       LIMIT 50
-    `);
+    `;
 
-    res.render('pages/discover', { listings, notice });
+    const listings = await db.any(listingsQuery, params);
+
+    const categories = await db.any(`
+        SELECT categorys AS category FROM category ORDER BY categorys ASC
+      `);
+    res.render('pages/discover', { 
+      listings,
+      categories,
+      selectedCategory: categoryFilter,
+      notice
+    });
   } catch (err) {
     console.error('Error loading listings:', err);
-    res.render('pages/discover', { listings: [], notice });
+    res.render('pages/discover', { listings: [], notice: req.query?.notice || null });
   }
 });
 
@@ -756,8 +785,16 @@ app.get('/listings/:id', async (req, res) => {
 
 
 
-app.get('/create_listing', (req, res) => {
-  res.render('pages/create_listing'); 
+app.get('/create_listing', async (req, res) => {
+  try {
+    const categories = await db.any(`
+      SELECT categorys AS category FROM category ORDER BY categorys ASC
+    `);
+    res.render('pages/create_listing', { categories });
+  } catch (err) {
+    console.error('Failed to load categories for create listing:', err);
+    res.render('pages/create_listing', { categories: [], error: 'Unable to load categories' });
+  }
 });
 
 
@@ -782,11 +819,14 @@ app.post('/create_listing', async (req, res) => {
       [req.session.user.username]
     );
 
+    const normalizedCategory = (req.body.category || '').toLowerCase();
+    const price = normalizedCategory === 'free' ? 0 : req.body.price;
+
     const { listing_id } = await db.one(
       `INSERT INTO listings (title, description, price, category, image_url, contact_info)
        VALUES ($1,$2,$3,$4,$5,$6)
        RETURNING listing_id`,
-      [req.body.title, req.body.description, req.body.price, req.body.category, req.body.image_url, req.body.contact_info]
+      [req.body.title, req.body.description, price, req.body.category, req.body.image_url, req.body.contact_info]
     );
 
     await db.none(

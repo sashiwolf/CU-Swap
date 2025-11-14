@@ -48,4 +48,5 @@ CREATE TABLE IF NOT EXISTS reviews_to_user (
 CREATE TABLE IF NOT EXISTS category(
   CATEGORY_ID SERIAL PRIMARY KEY,
   categorys VARCHAR(50) 
+  
 );
