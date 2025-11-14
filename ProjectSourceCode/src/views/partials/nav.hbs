@@ -45,6 +45,9 @@
     <li><a href="/my-listings" class="cu-nav-link">My Listing</a></li>
     <li><a href="/my-reviews" class="cu-nav-link">My Reviews</a></li>
     <li><a href="/profile" class="cu-nav-link">Profile</a></li>
+     {{#if isModerator}}
+      <li><a href="/users" class="cu-nav-link">Users</a></li>
+    {{/if}}
     <li><a href="/logout" class="cu-nav-link">Logout</a></li>
   </ul>
 </nav>

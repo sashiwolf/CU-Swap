@@ -5,6 +5,9 @@
   <div class="container-fluid d-flex align-items-center justify-content-between">
     <div class="d-flex align-items-center">
       <img src="/images/image.png" alt="CU Swap Logo" height="165px">
+      {{#if isModerator}}
+        <span class="text-light fw-bold ms-3">Welcome Admin</span>
+      {{/if}}
     </div>
     {{#if showAuthButtons}}
       <nav class="d-flex gap-3">

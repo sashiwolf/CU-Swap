@@ -41,3 +41,12 @@ CREATE TABLE IF NOT EXISTS reviews_to_user (
   reviewee_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE, -- recipient
   CONSTRAINT reviewer_ne_reviewee CHECK (reviewer_id <> reviewee_id)
 );
+
+-- BANNED_USERS TABLE
+
+CREATE TABLE IF NOT EXISTS banned_users (
+  user_id SERIAL PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  phone_num VARCHAR(20) UNIQUE NOT NULL
+);

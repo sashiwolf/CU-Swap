@@ -5,7 +5,14 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- Password = Password1!
 INSERT INTO users (username, password, email, phone_num, role) VALUES
   ('seedbuyer',  crypt('Password1!', gen_salt('bf')), 'abcd1234@colorado.edu', '1111111100', 'user'),
-  ('seedseller', crypt('Password1!', gen_salt('bf')), 'efgh5678@colorado.edu', '2222222200', 'user');
+  ('seedseller', crypt('Password1!', gen_salt('bf')), 'efgh5678@colorado.edu', '2222222200', 'user'),
+  ('seedmod', crypt('Password1!', gen_salt('bf')), 'mods8305@colorado.edu', '2222222201', 'moderator');
+  
+
+
+-- Sample banned users
+INSERT INTO banned_users (username, email, phone_num)
+VALUES ('Tim', 'shbu4101@colorado.edu', '+111111111111');
 
 -- Sample listing owned by seedseller
 INSERT INTO listings (title, description, price, category, image_url, contact_info)

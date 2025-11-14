@@ -16,6 +16,12 @@
                         <h4 class="card-subtitle mb-2 text-success mt-auto">
                             <strong>${{this.price}}</strong>
                         </h4>
+
+                         {{#if ../isModerator}}
+                            <form action="/listings/{{this.id}}/delete" method="POST" class="mt-2">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    {{/if}}
                     </div>
                 </div>
             </div>
