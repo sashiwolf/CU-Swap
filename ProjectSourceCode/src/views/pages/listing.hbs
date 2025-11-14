@@ -41,12 +41,18 @@
         {{/if}}
       </div>
 
-      <form action="/checkout" method="get" class="mt-3">
-        <input type="hidden" name="listingId" value="{{listing.listing_id}}">
-        <button type="submit" class="btn btn-primary btn-lg w-100">
-          Buy Now for ${{listing.price}}
-        </button>
-      </form>
+      {{#if listing.is_sold}}
+        <div class="alert alert-warning mt-3">
+          This item has already been purchased.
+        </div>
+      {{else}}
+        <form action="/checkout" method="get" class="mt-3">
+          <input type="hidden" name="listingId" value="{{listing.listing_id}}">
+          <button type="submit" class="btn btn-primary btn-lg w-100">
+            Buy Now for ${{listing.price}}
+          </button>
+        </form>
+      {{/if}}
     </div>
   </div>
 

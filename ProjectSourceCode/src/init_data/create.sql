@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS listings (
   price NUMERIC(10,2),
   category VARCHAR(50),
   image_url TEXT,
-  contact_info VARCHAR(100)
+  contact_info VARCHAR(100),
+  is_sold BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- USERS_TO_LISTINGS TABLE

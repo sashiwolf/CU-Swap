@@ -19,6 +19,17 @@
         </a>
       </div>
     <div class="row row-cols-1 row-cols-md-3 g-4">
+        <div class="d-flex justify-content-end mb-3">
+            <a href="/create_listing" class="btn btn-primary"> 
+                Create Listing
+            </a>
+        </div>
+        {{#if notice}}
+          <div class="alert alert-warning">
+            {{notice}}
+          </div>
+        {{/if}}
+        <div class="row row-cols-1 row-cols-md-3 g-4">
 
     {{#each listings}}
       <div class="col">
