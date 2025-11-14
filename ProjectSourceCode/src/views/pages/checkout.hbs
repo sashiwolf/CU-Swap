@@ -1,0 +1,100 @@
+<h2 class="mb-3">Checkout</h2>
+<p class="mb-4">
+  {{#if itemTitle}}
+    <strong>Item:</strong> {{itemTitle}}<br>
+  {{/if}}
+  <strong>Charge:</strong> {{formatCurrency amount currency}}<br>
+  {{#if description}}
+    <span class="text-muted">{{description}}</span><br>
+  {{/if}}
+  <strong>Seller Account:</strong> {{sellerAccountId}}
+</p>
+
+{{> payment-form}}
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+  (function () {
+    const publishableKey = "{{publishableKey}}";
+    const amount = {{amount}};
+    const currency = "{{currency}}";
+    const sellerAccountId = "{{sellerAccountId}}";
+
+    const stripe = Stripe(publishableKey, {
+      stripeAccount: sellerAccountId
+    });
+    const elements = stripe.elements();
+    const card = elements.create("card");
+    card.mount("#card-element");
+
+    const payBtn = document.getElementById("pay-btn");
+    const statusEl = document.getElementById("payment-status");
+    const errorEl = document.getElementById("card-errors");
+
+    async function createPaymentIntent() {
+      const res = await fetch("/payments/create-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, currency, sellerAccountId })
+      });
+
+      if (!res.ok) {
+        let msg = "Failed to create PaymentIntent";
+        try {
+          const data = await res.json();
+          if (data && data.error) msg = data.error;
+        } catch (e) {}
+        throw new Error(msg);
+      }
+
+      const data = await res.json();
+      return data.clientSecret;
+    }
+
+    async function handlePayment() {
+      payBtn.disabled = true;
+      statusEl.textContent = "Processing payment…";
+      statusEl.className = "mt-3 small text-muted";
+      errorEl.textContent = "";
+
+      try {
+        const clientSecret = await createPaymentIntent();
+        const result = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: { card }
+        });
+
+        if (result.error) {
+          errorEl.textContent = result.error.message || "Payment failed.";
+          statusEl.textContent = "Payment failed.";
+          statusEl.className = "mt-3 small text-danger";
+          payBtn.disabled = false;
+          return;
+        }
+
+        if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
+          statusEl.textContent = "Payment successful! Redirecting…";
+          statusEl.className = "mt-3 small text-success";
+          window.location.href =
+            "/success?sellerId=" + encodeURIComponent(sellerAccountId) +
+            "&payment_intent=" + encodeURIComponent(result.paymentIntent.id);
+
+        } else if (result.paymentIntent) {
+          statusEl.textContent = "Payment status: " + result.paymentIntent.status;
+          statusEl.className = "mt-3 small text-warning";
+          payBtn.disabled = false;
+        } else {
+          statusEl.textContent = "Unexpected payment response.";
+          statusEl.className = "mt-3 small text-danger";
+          payBtn.disabled = false;
+        }
+      } catch (e) {
+        errorEl.textContent = e.message;
+        statusEl.textContent = "Payment error.";
+        statusEl.className = "mt-3 small text-danger";
+        payBtn.disabled = false;
+      }
+    }
+
+    payBtn.addEventListener("click", handlePayment);
+  })();
+</script>
