@@ -169,6 +169,12 @@ app.post('/register', async (req, res) => {
     return fail(400, 'missing_fields');
   }
 
+  const banned = await db.oneOrNone('SELECT * FROM banned_users WHERE email = $1', [email]);
+
+        if(banned){
+          return res.status(400).render('pages/register', {error: true, message: "This email has been restricted access to the website.", hideNav: true});
+        }
+
   const v = req.session.emailVerification;
   if (!v || v.email !== email) return fail(400, 'no_session_or_email_mismatch');
   if (Date.now() > v.expires)  return fail(400, 'expired');
@@ -210,6 +216,12 @@ app.post('/register', async (req, res) => {
         return res.status(400).render('pages/login', {error: true, message: "Please enter an email and password", hideNav: true});
     }
     try {
+
+        const banned = await db.oneOrNone('SELECT * FROM banned_users WHERE email = $1', [req.body.email]);
+
+        if(banned){
+          return res.status(400).render('pages/login', {error: true, message: "This email has been restricted access to the website.", hideNav: true});
+        }
         //get username from database
         const user = await db.oneOrNone('SELECT * FROM users WHERE email = $1', [
         req.body.email,
@@ -242,7 +254,7 @@ app.post('/register', async (req, res) => {
             req.session.user = user;
             req.session.modTag = true;
             req.session.save(() =>{
-                res.redirect('/modHome')
+                res.redirect('/discover')
             });
         }
         //passwords dont match
@@ -270,6 +282,14 @@ const auth = (req, res, next) => {
 
 // // Authentication Required
  app.use(auth);
+ 
+//Admin Checker
+ app.use((req, res, next) => {
+  res.locals.currentUser = req.session.user || null;
+  res.locals.isModerator = !!req.session.modTag; // true/false
+  next();
+});
+
 
 // Logout
 app.get('/logout', (req, res) => {

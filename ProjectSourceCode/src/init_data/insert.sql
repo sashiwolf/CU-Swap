@@ -10,7 +10,11 @@ INSERT INTO users (username, password, email, phone_num, role) VALUES
   ('user3', crypt('Password1!', gen_salt('bf')), 'ijkl9012@colorado.edu', '3333333300', 'user'),
   ('user4', crypt('Password1!', gen_salt('bf')), 'mnop3456@colorado.edu', '4444444400', 'user'),
   ('user5', crypt('Password1!', gen_salt('bf')), 'qrst7890@colorado.edu', '5555555500', 'user'),
-  ('user6', crypt('Password1!', gen_salt('bf')), 'uvwx2345@colorado.edu', '6666666600', 'user');
+  ('user6', crypt('Password1!', gen_salt('bf')), 'uvwx2345@colorado.edu', '6666666600', 'user'),
+  ('seedmod', crypt('Password1!', gen_salt('bf')), 'mods8305@colorado.edu', '2222222201', 'moderator');
+
+INSERT INTO banned_users (username, email, phone_num)
+VALUES ('Tim', 'shbu4101@colorado.edu', '+111111111111');
 
 
 -- Map:
