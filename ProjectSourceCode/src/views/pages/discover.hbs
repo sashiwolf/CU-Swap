@@ -1,63 +1,57 @@
 {{!< main }}
 
 <main>
-    <div class="container py-4">
-      <div class="d-flex flex-wrap align-items-center gap-3 mb-4 p-3 bg-light rounded">
-        <form method="GET" action="/discover" class="d-flex align-items-center gap-2 flex-wrap mb-0">
-          <label for="category" class="form-label fw-semibold mb-0">Category</label>
-          <select name="category" id="category" class="form-select form-select-sm" onchange="this.form.submit()">
-            <option value="">All Categories</option>
-            {{#each categories}}
-              <option value="{{this.category}}" {{#if (eq this.category ../selectedCategory)}}selected{{/if}}>
-                {{this.category}}
-              </option>
-            {{/each}}
-          </select>
-        </form>
-        <a href="/create_listing" class="btn btn-primary btn-sm ms-auto">
-          Create Listing
-        </a>
+  <div class="container py-4">
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-4 p-3 bg-light rounded">
+      <form method="GET" action="/discover" class="d-flex align-items-center gap-2 flex-wrap mb-0">
+        <label for="category" class="form-label fw-semibold mb-0">Category</label>
+        <select name="category" id="category" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">All Categories</option>
+          {{#each categories}}
+            <option value="{{this.category}}" {{#if (eq this.category ../selectedCategory)}}selected{{/if}}>
+              {{this.category}}
+            </option>
+          {{/each}}
+        </select>
+      </form>
+      <a href="/create_listing" class="btn btn-primary btn-sm ms-auto">
+        Create Listing
+      </a>
+    </div>
+
+    {{#if notice}}
+      <div class="alert alert-warning">
+        {{notice}}
       </div>
+    {{/if}}
+
     <div class="row row-cols-1 row-cols-md-3 g-4">
-        <div class="d-flex justify-content-end mb-3">
-            <a href="/create_listing" class="btn btn-primary"> 
-                Create Listing
-            </a>
-        </div>
-        {{#if notice}}
-          <div class="alert alert-warning">
-            {{notice}}
-          </div>
-        {{/if}}
-        <div class="row row-cols-1 row-cols-md-3 g-4">
+      {{#each listings}}
+        <div class="col">
+          <div class="card h-100 shadow-sm">
+            <img
+              src="{{this.image_url}}"
+              class="card-img-top"
+              alt="{{this.title}} thumbnail"
+              style="height:200px; object-fit:cover;"
+            >
 
-    {{#each listings}}
-      <div class="col">
-        <div class="card h-100 shadow-sm">
-          <img
-            src="{{this.image_url}}"
-            class="card-img-top"
-            alt="{{this.title}} thumbnail"
-            style="height:200px; object-fit:cover;"
-          >
+            <div class="card-body d-flex flex-column">
+              <h5 class="card-title text-primary mb-2">{{this.title}}</h5>
 
-          <div class="card-body d-flex flex-column">
-            <h5 class="card-title text-primary mb-2">{{this.title}}</h5>
+              <h4 class="card-subtitle mt-auto text-success">
+                <strong>${{this.price}}</strong>
+              </h4>
 
-            <h4 class="card-subtitle mt-auto text-success">
-              <strong>${{this.price}}</strong>
-            </h4>
-
-            <a
-              href="/listings/{{this.listing_id}}"
-              class="stretched-link"
-              aria-label="View {{this.title}}"
-            ></a>
+              <a
+                href="/listings/{{this.listing_id}}"
+                class="stretched-link"
+                aria-label="View {{this.title}}"
+              ></a>
+            </div>
           </div>
         </div>
-      </div>
       {{/each}}
-
     </div>
   </div>
 </main>

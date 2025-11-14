@@ -29,7 +29,7 @@ const hbs = handlebars.create({
   partialsDir: path.join(__dirname, 'src/views/partials'),
 });
 
-Handlebars.registerHelper('eq', (a, b) => a === b);
+hbs.handlebars.registerHelper('eq', (a, b) => a === b);
 
 dotenv.config(); 
 // database configuration
@@ -681,25 +681,32 @@ app.post('/leave_review', async (req, res) => {
 app.get('/discover', async (req, res) => {
   try {
     const categoryFilter = req.query.category || null;
+    const notice = req.query.notice || null;
 
     const params = [];
-    let whereClause = '';
+    let listingsQuery = `
+      SELECT listing_id, title, price, category, image_url
+      FROM listings
+    `;
+
     if (categoryFilter) {
-      whereClause = 'WHERE category = $1';
+      listingsQuery += `
+        WHERE category = $1
+          AND is_sold = FALSE
+      `;
       params.push(categoryFilter);
+    } else {
+      listingsQuery += `
+        WHERE is_sold = FALSE
+      `;
     }
 
-    const listings = await db.any(
-      `
-        SELECT listing_id, title, price, category, image_url
-        FROM listings
-        ${whereClause}
-        WHERE is_sold = FALSE
+    listingsQuery += `
       ORDER BY listing_id DESC
-        LIMIT 50
-      `,
-      params
-    );
+      LIMIT 50
+    `;
+
+    const listings = await db.any(listingsQuery, params);
 
     const categories = await db.any(`
         SELECT categorys AS category FROM category ORDER BY categorys ASC
@@ -707,11 +714,12 @@ app.get('/discover', async (req, res) => {
     res.render('pages/discover', { 
       listings,
       categories,
-      selectedCategory: categoryFilter
-    , notice });
+      selectedCategory: categoryFilter,
+      notice
+    });
   } catch (err) {
     console.error('Error loading listings:', err);
-    res.render('pages/discover', { listings: [], notice });
+    res.render('pages/discover', { listings: [], notice: req.query?.notice || null });
   }
 });
 
@@ -811,11 +819,14 @@ app.post('/create_listing', async (req, res) => {
       [req.session.user.username]
     );
 
+    const normalizedCategory = (req.body.category || '').toLowerCase();
+    const price = normalizedCategory === 'free' ? 0 : req.body.price;
+
     const { listing_id } = await db.one(
       `INSERT INTO listings (title, description, price, category, image_url, contact_info)
        VALUES ($1,$2,$3,$4,$5,$6)
        RETURNING listing_id`,
-      [req.body.title, req.body.description, req.body.price, req.body.category, req.body.image_url, req.body.contact_info]
+      [req.body.title, req.body.description, price, req.body.category, req.body.image_url, req.body.contact_info]
     );
 
     await db.none(

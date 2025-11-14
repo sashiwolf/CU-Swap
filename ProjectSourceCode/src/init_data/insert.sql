@@ -12,6 +12,7 @@ INSERT INTO users (username, password, email, phone_num, role) VALUES
   ('user5', crypt('Password1!', gen_salt('bf')), 'qrst7890@colorado.edu', '5555555500', 'user'),
   ('user6', crypt('Password1!', gen_salt('bf')), 'uvwx2345@colorado.edu', '6666666600', 'user');
 
+
 -- Map:
 -- user1 = abcd1234 (buyer)
 -- user2 = efgh5678 (seller)
