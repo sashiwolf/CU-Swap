@@ -29,6 +29,8 @@ const hbs = handlebars.create({
   partialsDir: path.join(__dirname, 'src/views/partials'),
 });
 
+Handlebars.registerHelper('eq', (a, b) => a === b);
+
 dotenv.config(); 
 // database configuration
 const dbConfig = {
@@ -553,14 +555,34 @@ app.post('/leave_review', async (req, res) => {
 // Discover page
 app.get('/discover', async (req, res) => {
   try {
-    const listings = await db.any(`
-      SELECT listing_id, title, price, category, image_url
-      FROM listings
-      ORDER BY listing_id DESC
-      LIMIT 50
-    `);
+    const categoryFilter = req.query.category || null;
 
-    res.render('pages/discover', { listings });
+    const params = [];
+    let whereClause = '';
+    if (categoryFilter) {
+      whereClause = 'WHERE category = $1';
+      params.push(categoryFilter);
+    }
+
+    const listings = await db.any(
+      `
+        SELECT listing_id, title, price, category, image_url
+        FROM listings
+        ${whereClause}
+        ORDER BY listing_id DESC
+        LIMIT 50
+      `,
+      params
+    );
+
+    const categories = await db.any(`
+        SELECT categorys AS category FROM category ORDER BY categorys ASC
+      `);
+    res.render('pages/discover', { 
+      listings,
+      categories,
+      selectedCategory: categoryFilter
+     });
   } catch (err) {
     console.error('Error loading listings:', err);
     res.render('pages/discover', { listings: [] });
@@ -628,8 +650,16 @@ app.get('/listings/:id', async (req, res) => {
 
 
 
-app.get('/create_listing', (req, res) => {
-  res.render('pages/create_listing'); 
+app.get('/create_listing', async (req, res) => {
+  try {
+    const categories = await db.any(`
+      SELECT categorys AS category FROM category ORDER BY categorys ASC
+    `);
+    res.render('pages/create_listing', { categories });
+  } catch (err) {
+    console.error('Failed to load categories for create listing:', err);
+    res.render('pages/create_listing', { categories: [], error: 'Unable to load categories' });
+  }
 });
 
 
