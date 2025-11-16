@@ -45,6 +45,35 @@ const db = pgp(dbConfig);
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY); 
 
+const fetchListingWithOwner = (listingId) =>
+  db.oneOrNone(
+    `
+      SELECT
+        l.listing_id,
+        l.title,
+        l.description,
+        l.price,
+        l.category,
+        l.image_url,
+        l.contact_info,
+        l.is_sold,
+        utl.user_id AS owner_id
+      FROM listings l
+      LEFT JOIN users_to_listings utl ON utl.listing_id = l.listing_id
+      WHERE l.listing_id = $1
+    `,
+    [listingId]
+  );
+
+const fetchCategories = () =>
+  db.any('SELECT categorys AS category FROM category ORDER BY categorys ASC');
+
+const isModeratorUser = (user, session) =>
+  !!(session?.modTag || user?.role === 'moderator');
+
+const hasValue = (value) =>
+  value !== undefined && value !== null && String(value).trim() !== '';
+
 // test your database
 db.connect()
   .then(obj => {
@@ -302,6 +331,199 @@ app.get('/logout', (req, res) => {
   });
 });
 
+// My listings page
+app.get('/my-listings', async (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+
+  const flashMessage = req.query.status === 'updated' ? 'Listing updated successfully.' : null;
+
+  try {
+    const listings = await db.any(
+      `
+      SELECT
+        l.listing_id,
+        l.title,
+        l.description,
+        l.price,
+        l.category,
+        l.image_url,
+        l.is_sold
+      FROM listings l
+      JOIN users_to_listings utl ON utl.listing_id = l.listing_id
+      WHERE utl.user_id = $1
+      ORDER BY l.listing_id DESC
+      `,
+      [req.session.user.user_id]
+    );
+
+    res.render('pages/my_listings', {
+      layout: 'main',
+      title: 'My Listings',
+      listings,
+      flashMessage
+    });
+  } catch (err) {
+    console.error('Error loading user listings:', err);
+    res.render('pages/my_listings', {
+      layout: 'main',
+      title: 'My Listings',
+      listings: [],
+      message: 'Unable to load your listings right now.',
+      flashMessage: null
+    });
+  }
+});
+
+// Delete listing
+app.post('/listings/:id/delete', async (req, res) => {
+  const user = req.session.user;
+  if (!user) {
+    return res.status(401).json({ error: 'You must be logged in to delete a listing.' });
+  }
+
+  const listingId = Number(req.params.id);
+  if (!Number.isInteger(listingId)) {
+    return res.status(400).json({ error: 'Invalid listing id.' });
+  }
+
+  try {
+    const owner = await db.oneOrNone(
+      'SELECT user_id FROM users_to_listings WHERE listing_id = $1',
+      [listingId]
+    );
+
+    if (!owner) {
+      return res.status(404).json({ error: 'Listing not found.' });
+    }
+
+    const isModerator = user.role === 'moderator' || req.session.modTag;
+    if (!isModerator && owner.user_id !== user.user_id) {
+      return res.status(403).json({ error: 'You can only delete your own listings.' });
+    }
+
+    await db.none('DELETE FROM users_to_listings WHERE listing_id = $1', [listingId]);
+    await db.none('DELETE FROM listings WHERE listing_id = $1', [listingId]);
+
+    res.json({ message: 'Listing deleted.' });
+  } catch (err) {
+    console.error('Error deleting listing:', err);
+    res.status(500).json({ error: 'Failed to delete listing.' });
+  }
+});
+
+// Edit listing form
+app.get('/listings/:id/edit', async (req, res) => {
+  const user = req.session.user;
+  if (!user) {
+    return res.redirect('/login');
+  }
+
+  const listingId = Number(req.params.id);
+  if (!Number.isInteger(listingId)) {
+    return res.status(400).render('pages/error', { message: 'Invalid listing id.' });
+  }
+
+  try {
+    const listing = await fetchListingWithOwner(listingId);
+    if (!listing) {
+      return res.status(404).render('pages/error', { message: 'Listing not found.' });
+    }
+
+    const canEdit = isModeratorUser(user, req.session) || listing.owner_id === user.user_id;
+    if (!canEdit) {
+      return res.status(403).render('pages/error', { message: 'You can only edit your own listings.' });
+    }
+
+    const categories = await fetchCategories();
+    res.render('pages/edit_listing', { listing, categories });
+  } catch (err) {
+    console.error('Error loading listing for edit:', err);
+    res.status(500).render('pages/error', { message: 'Unable to load listing for editing.' });
+  }
+});
+
+// Update listing
+app.post('/listings/:id/edit', async (req, res) => {
+  const user = req.session.user;
+  if (!user) {
+    return res.redirect('/login');
+  }
+
+  const listingId = Number(req.params.id);
+  if (!Number.isInteger(listingId)) {
+    return res.status(400).render('pages/error', { message: 'Invalid listing id.' });
+  }
+
+  try {
+    const listing = await fetchListingWithOwner(listingId);
+    if (!listing) {
+      return res.status(404).render('pages/error', { message: 'Listing not found.' });
+    }
+
+    const canEdit = isModeratorUser(user, req.session) || listing.owner_id === user.user_id;
+    if (!canEdit) {
+      return res.status(403).render('pages/error', { message: 'You can only edit your own listings.' });
+    }
+
+    const updatedTitle = hasValue(req.body.title) ? req.body.title.trim() : listing.title;
+    const updatedDescription = hasValue(req.body.description) ? req.body.description : listing.description;
+    const updatedCategory = hasValue(req.body.category) ? req.body.category : listing.category;
+    const normalizedCategory = (updatedCategory || '').toLowerCase();
+
+    const parsedPrice = Number(req.body.price);
+    const updatedPrice =
+      hasValue(req.body.price) && !Number.isNaN(parsedPrice)
+        ? parsedPrice
+        : listing.price;
+    const finalPrice = normalizedCategory === 'free' ? 0 : updatedPrice;
+
+    const updatedImage = hasValue(req.body.image_url) ? req.body.image_url : listing.image_url;
+
+    await db.none(
+      `
+        UPDATE listings
+        SET title = $1,
+            description = $2,
+            price = $3,
+            category = $4,
+            image_url = $5
+        WHERE listing_id = $6
+      `,
+      [
+        updatedTitle,
+        updatedDescription,
+        finalPrice,
+        updatedCategory,
+        updatedImage,
+        listingId
+      ]
+    );
+
+    res.redirect('/my-listings?status=updated');
+  } catch (err) {
+    console.error('Error updating listing:', err);
+    try {
+      const categories = await fetchCategories();
+      res.status(400).render('pages/edit_listing', {
+        listing: {
+          listing_id: listingId,
+          title: updatedTitle,
+          description: updatedDescription,
+          price: finalPrice,
+          category: updatedCategory,
+          image_url: updatedImage,
+        },
+        categories,
+        error: 'Unable to update listing. Please try again.'
+      });
+    } catch (innerErr) {
+      console.error('Failed to reload edit form after update error:', innerErr);
+      res.status(500).render('pages/error', { message: 'Unable to update listing right now.' });
+    }
+  }
+});
 
 // My Reviews page
 app.get('/my-reviews', async (req, res) => {
@@ -807,9 +1029,7 @@ app.get('/listings/:id', async (req, res) => {
 
 app.get('/create_listing', async (req, res) => {
   try {
-    const categories = await db.any(`
-      SELECT categorys AS category FROM category ORDER BY categorys ASC
-    `);
+    const categories = await fetchCategories();
     res.render('pages/create_listing', { categories });
   } catch (err) {
     console.error('Failed to load categories for create listing:', err);

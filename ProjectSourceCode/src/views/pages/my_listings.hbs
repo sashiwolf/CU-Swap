@@ -1,0 +1,110 @@
+{{!< main }}
+
+<div class="container py-5">
+  <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+    <div>
+      <h1 class="mb-1">My Listings</h1>
+      <p class="text-muted mb-0">Review, edit, or remove the items you’ve shared with the CU Swap community.</p>
+    </div>
+  </div>
+
+  <div id="listing-flash" class="mb-3">
+    {{#if flashMessage}}
+      <div class="alert alert-success mb-0" role="alert">
+        {{flashMessage}}
+      </div>
+    {{/if}}
+  </div>
+
+  {{#if listings.length}}
+    <div class="row" id="listings-grid">
+      {{#each listings}}
+        <div
+          class="col-md-6 col-lg-4 mb-4"
+          id="listing-card-col-{{this.listing_id}}"
+          data-listing-card>
+          <article class="card h-100 shadow-sm">
+            {{#if this.image_url}}
+              <div class="ratio ratio-4x3">
+                <img
+                  src="{{this.image_url}}"
+                  alt="{{this.title}} photo"
+                  class="w-100 h-100"
+                  style="object-fit: cover;">
+              </div>
+            {{else}}
+              <div class="ratio ratio-4x3 bg-light d-flex align-items-center justify-content-center text-muted">
+                No image provided
+              </div>
+            {{/if}}
+
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                <h5 class="card-title mb-0">{{this.title}}</h5>
+                {{#if this.category}}
+                  <span class="badge bg-secondary text-uppercase">{{this.category}}</span>
+                {{/if}}
+              </div>
+
+              <p class="text-muted small flex-grow-1 mb-3">
+                {{#if this.description}}
+                  {{this.description}}
+                {{else}}
+                  No description provided.
+                {{/if}}
+              </p>
+
+              <div class="d-flex justify-content-between align-items-center mt-auto">
+                <span class="fw-semibold text-success">${{this.price}}</span>
+
+                <div class="d-flex gap-2">
+                  <a href="/listings/{{this.listing_id}}" class="btn btn-outline-primary btn-sm">
+                    View
+                  </a>
+                  <a href="/listings/{{this.listing_id}}/edit" class="btn btn-outline-secondary btn-sm">
+                    Edit
+                  </a>
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#listingDeleteModal"
+                    data-listing-id="{{this.listing_id}}"
+                    data-card-id="listing-card-col-{{this.listing_id}}"
+                    data-listing-title="{{this.title}}"
+                    data-delete-url="/listings/{{this.listing_id}}/delete">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      {{/each}}
+    </div>
+  {{/if}}
+
+  <div
+    id="no-listings-message"
+    class="text-center py-5 {{#if listings.length}}d-none{{/if}}">
+    <p class="text-muted fs-5 mb-3">You haven’t posted any listings yet.</p>
+  </div>
+</div>
+
+<div class="modal fade" id="listingDeleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Delete this listing?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        You’re about to remove <strong data-listing-name>this listing</strong>. This action cannot be undone.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmListingDeleteBtn">Delete listing</button>
+      </div>
+    </div>
+  </div>
+</div>
