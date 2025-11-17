@@ -34,7 +34,7 @@ INSERT INTO listings (title, description, price, category, image_url, contact_in
 VALUES (
   'Item title goes here',
   'Item description goes here',
-  100.00,
+  0.00,
   'Free',
   'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1200&auto=format&fit=crop',
   'efgh5678@colorado.edu',
