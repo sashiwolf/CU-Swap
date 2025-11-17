@@ -1,6 +1,12 @@
 <main class="container py-4">
   <a href="/discover" class="btn btn-link mb-3">&larr; Back to Discover</a>
 
+  {{#if flash}}
+    <div class="alert alert-{{flash.type}} mb-4" role="alert">
+      {{flash.message}}
+    </div>
+  {{/if}}
+
   <div class="row g-4">
     <div class="col-md-6">
       <div class="rounded shadow-sm overflow-hidden">
