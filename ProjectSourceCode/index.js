@@ -240,6 +240,7 @@ app.post('/register', async (req, res) => {
     );
 
     req.session.emailVerification = null;
+    setFlashMessage(req, 'success', 'Account created! You can log in now.');
     return res.redirect(302, '/login');
 
   } catch (err) {
@@ -250,7 +251,15 @@ app.post('/register', async (req, res) => {
 
   //render login
   app.get('/login', (req, res) => {
-    res.render('pages/login', { hideNav: true});
+    const flash = consumeFlashMessage(req);
+    const templateData = { hideNav: true };
+
+    if (flash?.message) {
+      templateData.message = flash.message;
+      templateData.error = flash.type === 'danger' || flash.type === 'error';
+    }
+
+    res.render('pages/login', templateData);
   });
 
   //login func
