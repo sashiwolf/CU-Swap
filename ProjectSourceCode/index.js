@@ -1022,7 +1022,7 @@ app.get('/discover', async (req, res) => {
   }
 });
 
-app.post('/listings/:id/delete', requireModerator, async (req, res) => {
+app.post('/listings/:id/admin_delete', requireModerator, async (req, res) => {
   const listingId = req.params.id;
   const reason = req.body.reason;
 
