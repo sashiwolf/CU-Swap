@@ -54,29 +54,41 @@
                 {{/if}}
               </p>
 
-              <div class="d-flex justify-content-between align-items-center mt-auto">
-                <span class="fw-semibold text-success">${{this.price}}</span>
+              <div class="d-flex justify-content-between align-items-center mt-auto flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="fw-semibold text-success mb-0">${{this.price}}</span>
+                  {{#if this.is_sold}}
+                    <span class="badge bg-danger">Sold</span>
+                  {{else}}
+                    <span class="badge bg-success">Available</span>
+                  {{/if}}
+                </div>
 
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap">
                   <a href="/listings/{{this.listing_id}}" class="btn btn-outline-primary btn-sm">
                     View
                   </a>
-                  <a href="/listings/{{this.listing_id}}/edit" class="btn btn-outline-secondary btn-sm">
-                    Edit
-                  </a>
-                  <button
-                    type="button"
-                    class="btn btn-outline-danger btn-sm"
-                    data-bs-toggle="modal"
-                    data-bs-target="#listingDeleteModal"
-                    data-listing-id="{{this.listing_id}}"
-                    data-card-id="listing-card-col-{{this.listing_id}}"
-                    data-listing-title="{{this.title}}"
-                    data-delete-url="/listings/{{this.listing_id}}/delete">
-                    Delete
-                  </button>
+                  {{#unless this.is_sold}}
+                    <a href="/listings/{{this.listing_id}}/edit" class="btn btn-outline-secondary btn-sm">
+                      Edit
+                    </a>
+                    <button
+                      type="button"
+                      class="btn btn-outline-danger btn-sm"
+                      data-bs-toggle="modal"
+                      data-bs-target="#listingDeleteModal"
+                      data-listing-id="{{this.listing_id}}"
+                      data-card-id="listing-card-col-{{this.listing_id}}"
+                      data-listing-title="{{this.title}}"
+                      data-delete-url="/listings/{{this.listing_id}}/delete">
+                      Delete
+                    </button>
+                  {{/unless}}
                 </div>
               </div>
+              {{#if this.is_sold}}
+                <p class="text-muted small mt-2 mb-0">Sold items cannot be edited or deleted.</p>
+              {{/if}}
             </div>
           </article>
         </div>

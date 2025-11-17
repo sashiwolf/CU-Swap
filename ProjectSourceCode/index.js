@@ -74,6 +74,21 @@ const isModeratorUser = (user, session) =>
 const hasValue = (value) =>
   value !== undefined && value !== null && String(value).trim() !== '';
 
+const setFlashMessage = (req, type, message) => {
+  if (req?.session) {
+    req.session.flash = { type, message };
+  }
+};
+
+const consumeFlashMessage = (req) => {
+  if (!req?.session) {
+    return null;
+  }
+  const flash = req.session.flash || null;
+  delete req.session.flash;
+  return flash;
+};
+
 // test your database
 db.connect()
   .then(obj => {
@@ -389,18 +404,18 @@ app.post('/listings/:id/delete', async (req, res) => {
   }
 
   try {
-    const owner = await db.oneOrNone(
-      'SELECT user_id FROM users_to_listings WHERE listing_id = $1',
-      [listingId]
-    );
-
-    if (!owner) {
+    const listing = await fetchListingWithOwner(listingId);
+    if (!listing) {
       return res.status(404).json({ error: 'Listing not found.' });
     }
 
-    const isModerator = user.role === 'moderator' || req.session.modTag;
-    if (!isModerator && owner.user_id !== user.user_id) {
+    const isModerator = isModeratorUser(user, req.session);
+    if (!isModerator && listing.owner_id !== user.user_id) {
       return res.status(403).json({ error: 'You can only delete your own listings.' });
+    }
+
+    if (listing.is_sold && !isModerator) {
+      return res.status(403).json({ error: 'Sold listings cannot be modified.' });
     }
 
     await db.none('DELETE FROM users_to_listings WHERE listing_id = $1', [listingId]);
@@ -431,9 +446,14 @@ app.get('/listings/:id/edit', async (req, res) => {
       return res.status(404).render('pages/error', { message: 'Listing not found.' });
     }
 
-    const canEdit = isModeratorUser(user, req.session) || listing.owner_id === user.user_id;
+    const isModerator = isModeratorUser(user, req.session);
+    const canEdit = isModerator || listing.owner_id === user.user_id;
     if (!canEdit) {
       return res.status(403).render('pages/error', { message: 'You can only edit your own listings.' });
+    }
+
+    if (listing.is_sold && !isModerator) {
+      return res.status(403).render('pages/error', { message: 'Sold listings cannot be modified.' });
     }
 
     const categories = await fetchCategories();
@@ -462,9 +482,14 @@ app.post('/listings/:id/edit', async (req, res) => {
       return res.status(404).render('pages/error', { message: 'Listing not found.' });
     }
 
-    const canEdit = isModeratorUser(user, req.session) || listing.owner_id === user.user_id;
+    const isModerator = isModeratorUser(user, req.session);
+    const canEdit = isModerator || listing.owner_id === user.user_id;
     if (!canEdit) {
       return res.status(403).render('pages/error', { message: 'You can only edit your own listings.' });
+    }
+
+    if (listing.is_sold && !isModerator) {
+      return res.status(403).render('pages/error', { message: 'Sold listings cannot be modified.' });
     }
 
     const updatedTitle = hasValue(req.body.title) ? req.body.title.trim() : listing.title;
@@ -682,6 +707,7 @@ app.engine(
     let sellerAccountId = DEMO_SELLER_ACCOUNT_ID;
     let sellerUserId = null;
     let sellerUsername = null;
+    const buyerId = req.session.user?.user_id || null;
 
     const listingId = Number(req.query.listingId);
     if (Number.isInteger(listingId)) {
@@ -705,6 +731,10 @@ app.engine(
         );
 
         if (listing) {
+          if (listing.seller_user_id && buyerId && listing.seller_user_id === buyerId) {
+            setFlashMessage(req, 'warning', "You can't buy your own listing.");
+            return res.redirect(`/listings/${listingId}`);
+          }
           if (listing.is_sold) {
             return res.redirect('/discover?sold=1');
           }
@@ -751,6 +781,7 @@ app.engine(
     try {
       const {amount, currency, sellerAccountId } = req.body;
       const listingId = req.session.checkout?.listingId;
+      const buyerId = req.session.user?.user_id || null;
 
       if(!sellerAccountId)
       {
@@ -758,9 +789,19 @@ app.engine(
       }
       if (listingId) {
         const listing = await db.oneOrNone(
-          'SELECT is_sold FROM listings WHERE listing_id = $1',
+          `
+            SELECT
+              l.is_sold,
+              utl.user_id AS seller_user_id
+            FROM listings l
+            LEFT JOIN users_to_listings utl ON utl.listing_id = l.listing_id
+            WHERE l.listing_id = $1
+          `,
           [listingId]
         );
+        if (listing?.seller_user_id && buyerId && listing.seller_user_id === buyerId) {
+          return res.status(403).json({ error: "You cannot buy your own listing." });
+        }
         if (listing && listing.is_sold) {
           return res.status(409).json({ error: "This item has already been purchased." });
         }
@@ -1016,7 +1057,9 @@ app.get('/listings/:id', async (req, res) => {
       [listing.seller_id]
     );
 
-    res.render('pages/listing', { listing, reviews });
+    const flash = consumeFlashMessage(req);
+
+    res.render('pages/listing', { listing, reviews, flash });
   } catch (err) {
     console.error('Error loading listing:', err);
     res.status(500).render('pages/error', { message: 'Unable to load listing right now.' });
