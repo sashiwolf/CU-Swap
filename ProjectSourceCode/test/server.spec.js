@@ -34,7 +34,7 @@ describe('Server!', () => {
 // Positive + Negative tests for /register
 describe('Register', function () {
   // allow a little extra time for async steps
-  /*this.timeout(5000);
+  this.timeout(5000);
 
   it('Positive: creates user and redirects to /login', async function () {
     const agent = chai.request.agent(server);           // preserves session cookies
@@ -66,7 +66,7 @@ describe('Register', function () {
 
     regResp.should.have.status(302);
     regResp.should.have.header('location', '/login');
-  });*/
+  });
 
   it('Negative: missing password redirects back to /register', function (done) {
     const uniq  = Date.now();
