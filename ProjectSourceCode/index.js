@@ -101,6 +101,13 @@ transporter.verify(err => {
   app.use('/images', express.static(path.join(__dirname, 'src', 'views', 'Images'))); 
   app.use('/js', express.static(path.join(__dirname, 'src', 'resources', 'js'))); // exposes /js/script.js
 
+  function requireModerator(req, res, next) {
+  if (!req.session || req.session.modTag !== true) {
+    return res.status(403).send("Forbidden: Admins only.");
+  }
+  next();
+}
+
   
   // *****************************************************
   // <!-- API Routes -->
@@ -743,6 +750,55 @@ app.get('/discover', async (req, res) => {
   }
 });
 
+app.post('/listings/:id/delete', requireModerator, async (req, res) => {
+  const listingId = req.params.id;
+  const reason = req.body.reason;
+
+  try {
+    // 1. Get listing title + owner email
+    const listing = await db.one(
+      `
+      SELECT l.listing_id,
+             l.title,
+             u.email
+      FROM listings l
+      JOIN users_to_listings ul
+        ON ul.listing_id = l.listing_id
+      JOIN users u
+        ON u.user_id = ul.user_id
+      WHERE l.listing_id = $1
+      `,
+      [listingId]
+    );
+
+    // 2. Delete the listing (users_to_listings rows will cascade)
+    await db.none(
+      'DELETE FROM listings WHERE listing_id = $1',
+      [listingId]
+    );
+
+    // 3. Email the owner
+    await transporter.sendMail({
+      from: '"CU Swap" <no-reply@cuswap.com>',
+      to: listing.email,
+      subject: 'Your CU Swap listing was removed',
+      text: `Hi,
+
+Your listing "${listing.title}" has been removed by a moderator.
+
+Reason: ${reason}
+
+– CU Swap Team`,
+    });
+
+    // 4. Back to discover page
+    res.redirect('/discover');
+  } catch (err) {
+    console.error('Error deleting listing:', err);
+    res.status(500).send('Error deleting listing');
+  }
+});
+
 // Listing page
 app.get('/listings/:id', async (req, res) => {
   const id = Number(req.params.id);
@@ -876,6 +932,83 @@ app.get("/seller/:sellerId/reviews/new", (req, res) => {
   // Render your review form view
   res.render("pages/leave_review", { sellerId });
 });
+
+app.get('/users', requireModerator, async (req, res) => {
+  try {
+    const users = await db.any(
+      `SELECT user_id, username, email, phone_num
+       FROM users
+       WHERE role = 'user'
+       ORDER BY username`
+    );
+
+    res.render('pages/users', { users });
+  } catch (err) {
+    console.error('Error loading users:', err);
+    res.status(500).send('Error loading users');
+  }
+});
+
+app.post('/users/:id/remove', requireModerator, async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    await db.tx(async t => {
+      // 1. Get the user info before deleting
+      const user = await t.one(
+        `SELECT user_id, username, email, phone_num
+         FROM users
+         WHERE user_id = $1`,
+        [userId]
+      );
+
+      // 2. Add them to banned_users (ignore if somehow already there)
+      await t.none(
+        `INSERT INTO banned_users (user_id, username, email, phone_num)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (user_id) DO NOTHING`,
+        [user.user_id, user.username, user.email, user.phone_num]
+      );
+
+      // 3. Delete any reviews they left (reviewer) or received (reviewee)
+      await t.none(
+        `DELETE FROM reviews
+         WHERE review_id IN (
+           SELECT review_id
+           FROM reviews_to_user
+           WHERE reviewer_id = $1
+              OR reviewee_id = $1
+         )`,
+        [userId]
+      );
+
+      // 4. Delete any listings they own
+      await t.none(
+        `DELETE FROM listings
+         WHERE listing_id IN (
+           SELECT listing_id
+           FROM users_to_listings
+           WHERE user_id = $1
+         )`,
+        [userId]
+      );
+
+      // 5. Finally, delete the user record itself
+      await t.none(
+        `DELETE FROM users
+         WHERE user_id = $1`,
+        [userId]
+      );
+    });
+
+    res.redirect('/users');
+  } catch (err) {
+    console.error('Error removing user:', err);
+    res.status(500).send('Error removing user');
+  }
+});
+
+
 
 
 
