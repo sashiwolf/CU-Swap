@@ -1,0 +1,1240 @@
+JYJY-UCB: Where is the configuration for this project defined?
+
+GitHub Copilot: You need to set up GitHub Copilot and be signed in to use Chat.
+
+JYJY-UCB: Help me analyze the GET path for /profile in index.js
+
+GitHub Copilot: Enable GPT-5 mini for all clients
+[object Object]
+
+JYJY-UCB: @agent Enable: "Enable GPT-5 mini for all clients"
+
+GitHub Copilot: I'll create a small todo list to track analysis and next steps for the `/profile` GET handler, then I'll analyze the code and provide concrete fixes and an example replacement handler.
+
+Created 4 todos
+
+Progress update: I created a todo list and started the inspection (item 1 is in-progress). Now I'll analyze the `/profile` GET path and list specific issues, their effects, and a clear fix you can apply next.
+
+## Quick summary
+The `/profile` route in `index.js` has a few bugs that prevent it from correctly loading and rendering a user's profile:
+- a SQL column name typo,
+- an improper DB call / returned shape vs. how the template expects data,
+- incomplete error logging in the catch block.
+
+Because of these, the query will likely return no rows (even for an existing user) or return an unexpected shape, and the template `src/views/pages/profile.hbs` will not have the user fields available at the top-level context.
+
+## Issues found (details and impact)
+1. SQL column name typo
+   - Current WHERE clause: `WHERE usename = $1`
+   - Problem: `usename` is misspelled (missing the 'r'). The `users` table uses `username`.
+   - Impact: The DB will return no rows or an SQL error depending on DB setup; the user record won't be retrieved.
+
+2. DB helper used and returned data shape
+   - Current code uses `db.any(...)`. `db.any` always returns an array (possibly empty).
+   - Later the code does: `res.render('pages/profile', {userInfo});`
+     - That passes an object with one property `userInfo` whose value is an array.
+     - The template `profile.hbs` expects top-level fields (`{{this.username}}`, `{{this.phone_num}}`, `{{this.email}}`) — i.e., it expects the context to be the user object itself.
+   - Impact: Template won't find `username` at top-level and will render nothing for those fields.
+
+3. Error logging in catch
+   - Current catch block: `catch (err) { console.error(); }`
+   - Problem: `console.error()` is called with no argument, so the actual error is not logged.
+   - Impact: Harder to debug runtime errors.
+
+4. (Behavioral) Global auth middleware
+   - `app.use(auth)` is declared before `/profile`, so access requires a logged-in session. That's fine if intentional, but verify you want auth applied globally to later routes.
+
+## Recommended fix (small, focused)
+- Fix the SQL to use `username`.
+- Use `db.oneOrNone(...)` (since username is unique) to get a single object or null.
+- If no user found, render an error or redirect.
+- Pass the user object as the top-level render context so `{{this.username}}` works.
+- Fix the catch logging to include the error.
+
+Replace the current `/profile` handler with the following:
+
+```javascript
+app.get('/profile', async (req, res) => {
+  try {
+    const userInfo = await db.oneOrNone(
+      `SELECT username, email, phone_num
+       FROM users
+       WHERE username = $1`,
+      [req.session.user.username]
+    );
+
+    if (!userInfo) {
+      // no user found — handle gracefully
+      return res.status(404).render('pages/profile', { error: 'User not found.' });
+    }
+
+    // pass the user object as the top-level context
+    res.render('pages/profile', userInfo);
+  } catch (err) {
+    console.error('Profile route error:', err);
+    res.status(500).render('pages/error', { error: 'Could not load profile.' });
+  }
+});
+```
+
+Why this works:
+- `db.oneOrNone` returns either an object (with `username`, `email`, `phone_num`) or `null`.
+- Rendering with `res.render('pages/profile', userInfo)` makes the template context equal to the user object, so `{{this.username}}` and the other `{{this.*}}` expressions in `profile.hbs` will find the values.
+- Proper error logging and status codes make debugging and UX clearer.
+
+## Alternative approaches
+- Keep `db.any` but extract the first row and pass it:  
+  const rows = await db.any(...); const userInfo = rows[0]; ... res.render('pages/profile', userInfo);
+- Or pass a namespaced object and update the template:
+  - Server: `res.render('pages/profile', { user: userInfo });`
+  - Template: use `{{user.username}}`, `{{user.email}}`, etc.
+- If you prefer explicit fields in the template, pass `{ username: userInfo.username, email: userInfo.email, phone_num: userInfo.phone_num }`.
+
+## Edge cases and suggestions
+- If `req.session.user` can be missing despite auth middleware, add a defensive check before DB call.
+- Consider using a dedicated `profile` view model object to avoid leaking fields.
+- Keep templates escaping in mind (Handlebars escapes by default).
+- If you want to reuse the same pattern elsewhere, consider a small helper to fetch the current user.
+
+## Next steps
+- I can apply the fix to `index.js` and run a quick test if you'd like. That would:
+  - Update the handler as above,
+  - Run the server (or run unit/integration tests if present),
+  - Report back results and any new errors.
+Tell me if you want me to make the code change now (I will apply the patch and run a quick validation), or if you want to discuss an alternative rendering approach. Also, I'll update the todo list to mark the inspection complete and the next item in-progress.
+
+JYJY-UCB: profile.hbs is to implement a profile page per the GET path in index.js. Currently, it has been drafted with basic HTML. It is to implement it instead with Bootstrap. Implement Bootstrap on this file.
+
+GitHub Copilot: Solution — step-by-step:
+1. Wrap profile content in a Bootstrap container and responsive row/column.
+2. Use a Bootstrap card to present avatar, username, email and phone with proper spacing and buttons.
+3. Include Bootstrap CDN links (CSS and JS bundle) in this template so the page styles render even if the main layout doesn't already include Bootstrap.
+
+### profile.hbs
+
+Provide a Bootstrap-styled profile card showing avatar, username, email, phone, and action buttons.
+
+````handlebars
+<!---- Bootstrap-styled profile page ---->
+<!---- Add Bootstrap via CDN so this template works standalone if layout doesn't include it ---->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ENjdO4Dr2bkBIFxQpeoYz1K1FQja7gq2mZ6Y9ZZTtmI3z4u0E6qzY0zWfQ2vQ2Q/" crossorigin="anonymous">
+
+<main class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header d-flex align-items-center">
+          <img src="https://via.placeholder.com/80" alt="avatar" class="rounded-circle me-3" width="64" height="64">
+          <div>
+            <h5 class="mb-0">{{this.username}}</h5>
+            <small class="text-muted">Member profile</small>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <ul class="list-group list-group-flush mb-3">
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span class="text-muted">Email</span>
+              <span>{{this.email}}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span class="text-muted">Phone</span>
+              <span>{{this.phone_num}}</span>
+            </li>
+            <!-- ...existing code... -->
+          </ul>
+
+          <div class="d-flex gap-2">
+            <a href="/profile/edit" class="btn btn-primary flex-grow-1">Edit Profile</a>
+            <form action="/logout" method="POST" class="m-0">
+              <button type="submit" class="btn btn-outline-secondary">Log out</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="card-footer text-muted small">
+          Last updated: {{this.updatedAt}}
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeoYz1K1FQja7gq2mZ6Y9ZZTtmI3z4u0E6qzY0zWfQ2vQ2Q/" crossorigin="anonymous"></script>
+````
+
+Made changes.
+
+JYJY-UCB: The following edits have been made manually to remove the profile picture and bootstrap sources as they ARE implemented in other files. Revise this.
+
+GitHub Copilot: Enable Claude Haiku 4.5 for all clients
+[object Object]
+
+JYJY-UCB: @GitHubCopilot Enable: "Enable Claude Haiku 4.5 for all clients"
+
+GitHub Copilot: ### profile.hbs
+
+Remove the placeholder avatar image and Bootstrap CDN links since they're handled elsewhere.
+
+````handlebars
+<main class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">{{this.username}}</h5>
+          <small class="text-muted">Member profile</small>
+        </div>
+
+        <div class="card-body">
+          <ul class="list-group list-group-flush mb-3">
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span class="text-muted">Email</span>
+              <span>{{this.email}}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span class="text-muted">Phone</span>
+              <span>{{this.phone_num}}</span>
+            </li>
+          </ul>
+
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary flex-grow-1">Edit Profile</button>
+            <button type="button" class="btn btn-outline-secondary">Log out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+````
+
+Made changes.
+
+JYJY-UCB: What does this file do?
+
+GitHub Copilot: This is a Handlebars template file that renders a **user profile page**. Here's what it does:
+
+**Layout & Structure:**
+- Creates a centered card component using Bootstrap styling
+- Displays the profile in a responsive layout (full width on mobile, narrower on larger screens)
+
+**Content Display:**
+- Shows the user's **username** as the card header
+- Displays user information in a list:
+  - Email address
+  - Phone number
+- All values are pulled from the template context (e.g., `{{this.username}}`, `{{this.email}}`)
+
+**User Actions:**
+- Includes an **"Edit Profile"** button (primary action)
+- Includes a **"Log out"** button (secondary action)
+
+The template uses Bootstrap classes for styling and currently has the buttons set up structurally, though the button click handlers would need to be implemented in JavaScript to actually perform the edit or logout operations.
+
+JYJY-UCB: How do I get rid of the log out button?
+
+GitHub Copilot: To remove the log out button, simply delete that line from the button container:
+
+````handlebars
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary flex-grow-1">Edit Profile</button>
+          </div>
+````
+
+This removes the log out button while keeping the "Edit Profile" button. The `flex-grow-1` class will make the remaining button take up the available space.
+
+JYJY-UCB: Explain the HTML tags one by one to me
+
+GitHub Copilot: Here's a breakdown of the HTML tags in this file:
+
+- **`<main>`** - Semantic container for the primary content of the page
+- **`<div class="container">`** - Bootstrap container that sets max-width and centers content horizontally
+- **`<div class="row">`** - Bootstrap row that creates a flex container for columns
+- **`<div class="col-12 col-md-8 col-lg-6">`** - Bootstrap column that's full width on mobile (col-12), 8/12 width on tablets (col-md-8), and 6/12 width on large screens (col-lg-6)
+- **`<div class="card">`** - Bootstrap card component for the white box container
+- **`<div class="card-header">`** - Top section of the card, typically for titles
+- **`<h5>`** - Heading level 5, displays the username
+- **`<small>`** - Renders smaller text for the "Profile" label
+- **`<div class="card-body">`** - Main content area of the card
+- **`<ul class="list-group">`** - Unordered list styled as a Bootstrap list group
+- **`<li class="list-group-item">`** - List item representing each profile field (Email, Phone)
+- **`<span>`** - Inline container for grouping text (used for labels and values)
+- **`<button type="button">`** - Clickable button element; `type="button"` specifies it's a generic button (not form submit)
+- **`{{...}}`** - Handlebars template syntax that inserts dynamic values from the data context
+
+JYJY-UCB: This file creates a profile card that does not occupy the full space on a PC screen. Why? How would this be fixed?
+
+GitHub Copilot: **Why it doesn't occupy full space:**
+
+The card is constrained by the Bootstrap grid system:
+- `<div class="col-lg-6">` limits the column to 50% width on large screens
+- `<div class="container">` adds max-width and padding constraints
+- `justify-content-center` centers the column, leaving empty space on both sides
+
+**How to fix it:**
+
+Change the column class to use full width:
+
+````handlebars
+<main class="container-fluid py-5">
+  <div class="row justify-content-center">
+    <div class="col-12">
+      <div class="card shadow-sm">
+// ...existing code...
+````
+
+**Changes made:**
+1. Replace `container` with `container-fluid` - removes max-width constraint, uses full screen width
+2. Change `col-12 col-md-8 col-lg-6` to just `col-12` - card takes 100% of available width
+
+If you want the card to stretch but still have some margin on the sides, you could instead use `col-11` or add custom padding/margin to the card.
+
+JYJY-UCB: Make it further such that the Email/Phone label  and the email/phone details are not separated by a large gap.
+
+GitHub Copilot: To reduce the gap between the labels and values, replace `justify-content-between` with `justify-content-start` and add a margin class to create controlled spacing:
+
+````handlebars
+          <ul class="list-group list-group-flush mb-3">
+            <li class="list-group-item d-flex justify-content-start gap-3 align-items-center">
+              <span class="text-muted">Email</span>
+              <span>{{this.email}}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-start gap-3 align-items-center">
+              <span class="text-muted">Phone</span>
+              <span>{{this.phone_num}}</span>
+            </li>
+          </ul>
+````
+
+**Changes:**
+- `justify-content-between` → `justify-content-start` - aligns items to the left instead of spreading them apart
+- Added `gap-3` - creates consistent spacing between the label and value (you can adjust to `gap-2` or `gap-4` if needed)
+
+JYJY-UCB: For conformity to gestalt principles, add formatting to distinguish between the labels and the information and box them together for semantic relation. 
+
+GitHub Copilot: To improve visual hierarchy and apply gestalt principles, wrap each label-value pair in a distinct container and add styling to separate them:
+
+````handlebars
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Email</small>
+                <span class="fw-500">{{this.email}}</span>
+              </div>
+            </div>
+            <div class="col-12 col-md-6">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Phone</small>
+                <span class="fw-500">{{this.phone_num}}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary flex-grow-1">Edit Profile</button>
+          </div>
+        </div>
+````
+
+**Changes applied:**
+- Each label-value pair is now in its own **boxed container** with `p-3 bg-light rounded border`
+- Labels are `<small>` and `text-muted` for visual distinction
+- Values use `fw-500` (medium font weight) for emphasis
+- Uses Bootstrap grid (`col-12 col-md-6`) so they stack on mobile, side-by-side on larger screens
+- `g-3` adds consistent spacing between boxes
+- Clear semantic grouping improves gestalt proximity and closure principles
+
+JYJY-UCB: Make sure that the containers always form rows and are never side by side 
+
+GitHub Copilot: To ensure the containers always stack vertically and never appear side-by-side, change the column classes to always use full width:
+
+````handlebars
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Email</small>
+                <span class="fw-500">{{this.email}}</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Phone</small>
+                <span class="fw-500">{{this.phone_num}}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary flex-grow-1">Edit Profile</button>
+          </div>
+        </div>
+````
+
+**Change:**
+- `col-12 col-md-6` → `col-12` - each container now always takes 100% width and stacks vertically on all screen sizes
+
+JYJY-UCB: Move the username into a card like the others
+
+GitHub Copilot: To move the username into a card like the others, replace the card-header with a boxed container in the card-body:
+
+````handlebars
+<main class="container-fluid py-5">
+  <div class="row justify-content-center">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Username</small>
+                <span class="fw-500">{{this.username}}</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Email</small>
+                <span class="fw-500">{{this.email}}</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Phone</small>
+                <span class="fw-500">{{this.phone_num}}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary flex-grow-1">Edit Profile</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+````
+
+**Changes:**
+- Removed the `card-header` element
+- Added username as the first boxed container matching the style of Email and Phone
+- All three fields now have consistent visual formatting
+
+JYJY-UCB: Add a header with text "Profile"
+
+GitHub Copilot: To add a header with the text "Profile", add a card-header element before the card-body:
+
+````handlebars
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">Profile</h5>
+        </div>
+        <div class="card-body">
+// ...existing code...
+````
+
+**Changes:**
+- Added `<div class="card-header">` with a heading that displays "Profile"
+- `mb-0` removes the default margin from the heading to keep it compact
+
+JYJY-UCB: I want to allow this profile to be edited by the user. How would this typically look? Do not implement code yet.
+
+GitHub Copilot: A typical editable profile interface would have these elements:
+
+**Layout Options:**
+
+1. **Modal/Dialog Approach** - Click "Edit Profile" to open a modal window with:
+   - Form fields for each editable field (Username, Email, Phone)
+   - Pre-populated with current values
+   - "Save" and "Cancel" buttons
+   - Form validation error messages below each field
+
+2. **In-Place Editing** - Click "Edit Profile" to transform the view:
+   - The card containers convert to editable form inputs
+   - Labels remain as labels
+   - "Edit Profile" button changes to "Save" and "Cancel" buttons
+   - Input fields are highlighted/focused
+
+3. **Separate Edit Page** - Click "Edit Profile" to navigate to a dedicated edit page with:
+   - A form with all editable fields
+   - Input validation on the page
+   - Success/error messages at the top
+   - "Save" and "Cancel" buttons
+
+**Common UX Features:**
+- Validation (email format, phone format, username requirements)
+- Visual feedback on which fields were changed
+- Confirmation on save success
+- Ability to cancel without saving changes
+- Loading state while saving to the backend
+
+**Which approach would you prefer for your profile page?**
+
+JYJY-UCB: I want something that forces email verification as implemented for register.hbs. Would a modal using bootstrap be feasible?
+
+GitHub Copilot: Yes, a **Bootstrap modal would be very feasible** for email verification on profile edit. It follows the same pattern as your register.hbs and keeps the user on the same page.
+
+**Advantages:**
+- User stays on profile page (doesn't navigate away)
+- Reuses your existing email verification backend (`/send-code`)
+- Matches the UX pattern users already know from registration
+- Clean, focused interaction
+- Can disable the form while verification is pending
+
+**How it would work:**
+
+1. User clicks "Edit Profile" button
+2. Modal opens with editable form fields (Username, Email, Phone)
+3. On form submission, check if email changed
+4. If email changed → show verification code input in modal
+5. User enters code and verifies
+6. If verified → send updated data to backend
+7. If not verified → show error and retry option
+
+**Flow:**
+- Display profile data in modal inputs
+- Email field change → trigger verification flow
+- Verification code input appears below email field
+- "Send Code" button sends to `/send-code` (your existing endpoint)
+- User enters code and confirms
+- "Save Profile" button submits all changes
+
+This reuses your existing `/send-code` endpoint and follows the same email verification pattern from registration. Would you like me to implement this approach?
+
+JYJY-UCB: Lets implement it
+
+GitHub Copilot: Here's the implementation with an edit modal that includes email verification:
+
+````handlebars
+<style>
+  .verification-step { display: none; }
+  .verification-step.active { display: block; }
+</style>
+
+<main class="container-fluid py-5">
+  <div class="row justify-content-center">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">Profile</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Username</small>
+                <span class="fw-500">{{this.username}}</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Email</small>
+                <span class="fw-500">{{this.email}}</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Phone</small>
+                <span class="fw-500">{{this.phone_num}}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary flex-grow-1" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Edit Form Step -->
+        <div id="editStep" class="verification-step active">
+          <form id="editProfileForm">
+            <div class="mb-3">
+              <label for="editUsername" class="form-label">Username</label>
+              <input type="text" class="form-control" id="editUsername" value="{{this.username}}" required>
+            </div>
+            <div class="mb-3">
+              <label for="editEmail" class="form-label">Email</label>
+              <input type="email" class="form-control" id="editEmail" value="{{this.email}}" required>
+            </div>
+            <div class="mb-3">
+              <label for="editPhone" class="form-label">Phone</label>
+              <input type="tel" class="form-control" id="editPhone" value="{{this.phone_num}}" required>
+            </div>
+          </form>
+        </div>
+
+        <!-- Verification Step -->
+        <div id="verificationStep" class="verification-step">
+          <p class="text-muted mb-3">A verification code has been sent to <strong id="verifyEmail"></strong></p>
+          <div class="mb-3">
+            <label for="verificationCode" class="form-label">Verification Code</label>
+            <input type="text" class="form-control" id="verificationCode" placeholder="Enter code" required>
+          </div>
+          <div id="verificationMsg" class="alert alert-info mb-3" style="display:none;"></div>
+          <button type="button" class="btn btn-link p-0" id="resendCodeBtn">Resend Code</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="nextBtn">Next</button>
+        <button type="button" class="btn btn-primary" id="confirmBtn" style="display:none;">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let originalEmail = '{{this.email}}';
+let newEmail = '';
+
+document.getElementById('nextBtn').addEventListener('click', async () => {
+  const username = document.getElementById('editUsername').value.trim();
+  const email = document.getElementById('editEmail').value.trim();
+  const phone = document.getElementById('editPhone').value.trim();
+
+  if (!username || !email || !phone) {
+    alert('All fields are required');
+    return;
+  }
+
+  // If email changed, verify it
+  if (email !== originalEmail) {
+    newEmail = email;
+    document.getElementById('verifyEmail').textContent = email;
+    document.getElementById('editStep').classList.remove('active');
+    document.getElementById('verificationStep').classList.add('active');
+    document.getElementById('nextBtn').style.display = 'none';
+    document.getElementById('confirmBtn').style.display = 'block';
+
+    // Send verification code
+    await sendVerificationCode(email);
+  } else {
+    // Email unchanged, save directly
+    await saveProfile(username, email, phone, null);
+  }
+});
+
+document.getElementById('confirmBtn').addEventListener('click', async () => {
+  const code = document.getElementById('verificationCode').value.trim();
+  if (!code) {
+    showVerificationMsg('Please enter the verification code', 'danger');
+    return;
+  }
+
+  const username = document.getElementById('editUsername').value.trim();
+  const email = document.getElementById('editEmail').value.trim();
+  const phone = document.getElementById('editPhone').value.trim();
+
+  await saveProfile(username, email, phone, code);
+});
+
+async function sendVerificationCode(email) {
+  try {
+    const res = await fetch('/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showVerificationMsg('Code sent! Check your inbox.', 'success');
+    } else {
+      showVerificationMsg(data.msg || 'Failed to send code', 'danger');
+    }
+  } catch {
+    showVerificationMsg('Network error sending code', 'danger');
+  }
+}
+
+document.getElementById('resendCodeBtn').addEventListener('click', async () => {
+  await sendVerificationCode(newEmail);
+});
+
+async function saveProfile(username, email, phone, verificationCode) {
+  try {
+    const res = await fetch('/update-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, phone, verificationCode })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editProfileModal')).hide();
+      window.location.reload();
+    } else {
+      showVerificationMsg(data.msg || 'Failed to update profile', 'danger');
+    }
+  } catch {
+    showVerificationMsg('Network error updating profile', 'danger');
+  }
+}
+
+function showVerificationMsg(msg, type) {
+  const msgEl = document.getElementById('verificationMsg');
+  msgEl.textContent = msg;
+  msgEl.className = `alert alert-${type}`;
+  msgEl.style.display = 'block';
+}
+</script>
+````
+
+**Key features:**
+- Modal opens with editable form fields pre-populated
+- If email unchanged → saves directly
+- If email changed → triggers verification flow
+- Reuses your `/send-code` endpoint
+- Requires new `/update-profile` backend endpoint (you'll need to implement this)
+- "Resend Code" option available
+- Clean two-step UX
+
+JYJY-UCB: This seems to implement everything in profile.hbs. However, I would like to have a handler (possibly a POST handler?) to handle it in a similar way as register.hbs handles this.
+
+GitHub Copilot: You need to add a POST handler `/update-profile` in your index.js to handle the profile updates. Here's the implementation:
+
+````javascript
+// ...existing code...
+
+//Profile page
+app.get('/profile', async (req, res) => {
+  try {
+    const userInfo = await db.oneOrNone(
+      `SELECT username, email, phone_num
+       FROM users
+       WHERE username = $1`,
+      [req.session.user.username]
+    );
+
+    if (!userInfo) {
+      // No user found
+      return res.status(404).render('pages/profile', { error: 'User not found.' });
+    }
+
+    res.render('pages/profile', userInfo);
+  } catch (err) {
+    console.error('Profile route error:', err);
+    res.status(500).render('pages/error', { error: 'Could not load profile.' });
+  }
+});
+
+// Update Profile
+app.post('/update-profile', async (req, res) => {
+  const { username, email, phone, verificationCode } = req.body;
+  const currentUser = req.session.user;
+
+  if (!username || !email || !phone) {
+    return res.status(400).json({ ok: false, msg: 'All fields are required' });
+  }
+
+  try {
+    const currentUserData = await db.oneOrNone(
+      'SELECT email FROM users WHERE user_id = $1',
+      [currentUser.user_id]
+    );
+
+    if (!currentUserData) {
+      return res.status(404).json({ ok: false, msg: 'User not found' });
+    }
+
+    // If email changed, verify it
+    if (email !== currentUserData.email) {
+      const v = req.session.emailVerification;
+      if (!v || v.email !== email) {
+        return res.status(400).json({ ok: false, msg: 'No verification session or email mismatch' });
+      }
+      if (Date.now() > v.expires) {
+        return res.status(400).json({ ok: false, msg: 'Verification code expired' });
+      }
+      if (v.code !== verificationCode) {
+        return res.status(400).json({ ok: false, msg: 'Invalid verification code' });
+      }
+    }
+
+    // Check for duplicate username or email (excluding current user)
+    const existing = await db.oneOrNone(
+      'SELECT 1 FROM users WHERE (email = $1 OR username = $2) AND user_id != $3',
+      [email, username, currentUser.user_id]
+    );
+    if (existing) {
+      return res.status(400).json({ ok: false, msg: 'Email or username already taken' });
+    }
+
+    // Update user in database
+    await db.none(
+      'UPDATE users SET username = $1, email = $2, phone_num = $3 WHERE user_id = $4',
+      [username, email, phone, currentUser.user_id]
+    );
+
+    // Update session with new data
+    req.session.user.username = username;
+    req.session.user.email = email;
+    req.session.user.phone_num = phone;
+    req.session.emailVerification = null;
+
+    req.session.save(() => {
+      res.json({ ok: true, msg: 'Profile updated successfully' });
+    });
+
+  } catch (err) {
+    console.error('update-profile error:', err);
+    res.status(500).json({ ok: false, msg: 'Failed to update profile' });
+  }
+});
+
+// Logout
+// ...existing code...
+````
+
+**Key features:**
+- Validates all required fields
+- Checks if email changed and verifies it matches the verification session
+- Validates verification code and expiry
+- Checks for duplicate username/email (excluding current user)
+- Updates database and session data
+- Returns JSON response matching the modal's expectations
+
+JYJY-UCB: Where is the mail transported used in this code?
+
+GitHub Copilot: The mail transporter is not currently defined in the code you've shown. 
+
+Looking at your `index.js`, you have `nodemailer` imported:
+```javascript
+const nodemailer = require('nodemailer');
+```
+
+However, the actual transporter configuration is missing. You need to create it before using `/send-code` or `/update-profile` handlers.
+
+**You should add something like this in your `index.js`:**
+
+```javascript
+// ...existing code...
+const nodemailer = require('nodemailer');
+
+// Configure email transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // or your email service
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
+
+// ...rest of code...
+```
+
+Then in your `/send-code` handler, you would use it like:
+```javascript
+await transporter.sendMail({
+  to: email,
+  subject: 'Verification Code',
+  html: `Your code is: ${code}`
+});
+```
+
+**Check your `register.hbs` or other files** to see if the transporter is already configured elsewhere, or check your `.env` file for `EMAIL_USER` and `EMAIL_PASSWORD` variables.
+
+JYJY-UCB: Let's not implement the mail transporter for now and just implement the UI for this profile editing.
+
+GitHub Copilot: Here's the profile.hbs with just the edit modal UI (without email verification for now):
+
+````handlebars
+<style>
+  .verification-step { display: none; }
+  .verification-step.active { display: block; }
+</style>
+
+<main class="container-fluid py-5">
+  <div class="row justify-content-center">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">Profile</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Username</small>
+                <span class="fw-500">{{this.username}}</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Email</small>
+                <span class="fw-500">{{this.email}}</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Phone</small>
+                <span class="fw-500">{{this.phone_num}}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary flex-grow-1" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editProfileForm">
+          <div class="mb-3">
+            <label for="editUsername" class="form-label">Username</label>
+            <input type="text" class="form-control" id="editUsername" value="{{this.username}}" required>
+          </div>
+          <div class="mb-3">
+            <label for="editEmail" class="form-label">Email</label>
+            <input type="email" class="form-control" id="editEmail" value="{{this.email}}" required>
+          </div>
+          <div class="mb-3">
+            <label for="editPhone" class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="editPhone" value="{{this.phone_num}}" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const username = document.getElementById('editUsername').value.trim();
+  const email = document.getElementById('editEmail').value.trim();
+  const phone = document.getElementById('editPhone').value.trim();
+
+  if (!username || !email || !phone) {
+    alert('All fields are required');
+    return;
+  }
+
+  try {
+    const res = await fetch('/update-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, phone })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editProfileModal')).hide();
+      window.location.reload();
+    } else {
+      alert(data.msg || 'Failed to update profile');
+    }
+  } catch (err) {
+    alert('Error updating profile');
+  }
+});
+</script>
+````
+
+**Changes:**
+- Simple modal with three editable fields (Username, Email, Phone)
+- "Save" button sends data to `/update-profile`
+- Removed verification step UI
+- Form validation for required fields
+- Modal closes and page reloads on successful save
+
+JYJY-UCB: Remove the JavaScript
+
+GitHub Copilot: ````handlebars
+<style>
+  .verification-step { display: none; }
+  .verification-step.active { display: block; }
+</style>
+
+<main class="container-fluid py-5">
+  <div class="row justify-content-center">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">Profile</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Username</small>
+                <span class="fw-500">{{this.username}}</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Email</small>
+                <span class="fw-500">{{this.email}}</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Phone</small>
+                <span class="fw-500">{{this.phone_num}}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary flex-grow-1" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editProfileForm">
+          <div class="mb-3">
+            <label for="editUsername" class="form-label">Username</label>
+            <input type="text" class="form-control" id="editUsername" value="{{this.username}}" required>
+          </div>
+          <div class="mb-3">
+            <label for="editEmail" class="form-label">Email</label>
+            <input type="email" class="form-control" id="editEmail" value="{{this.email}}" required>
+          </div>
+          <div class="mb-3">
+            <label for="editPhone" class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="editPhone" value="{{this.phone_num}}" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+````
+
+JavaScript removed. You can now add it back in a separate file or keep the HTML-only version for now.
+
+JYJY-UCB: Add the UI for 1) a button to send a verification email and 2) a field to fill out the verification code.
+
+GitHub Copilot: ````handlebars
+<main class="container-fluid py-5">
+  <div class="row justify-content-center">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">Profile</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Username</small>
+                <span class="fw-500">{{this.username}}</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Email</small>
+                <span class="fw-500">{{this.email}}</span>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border">
+                <small class="text-muted d-block mb-2">Phone</small>
+                <span class="fw-500">{{this.phone_num}}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary flex-grow-1" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editProfileForm">
+          <div class="mb-3">
+            <label for="editUsername" class="form-label">Username</label>
+            <input type="text" class="form-control" id="editUsername" value="{{this.username}}" required>
+          </div>
+          <div class="mb-3">
+            <label for="editEmail" class="form-label">Email</label>
+            <div class="d-flex gap-2">
+              <input type="email" class="form-control" id="editEmail" value="{{this.email}}" required>
+              <button type="button" class="btn btn-outline-primary" id="sendVerificationBtn">Send Code</button>
+            </div>
+          </div>
+          <div class="mb-3" id="verificationCodeContainer" style="display: none;">
+            <label for="verificationCode" class="form-label">Verification Code</label>
+            <input type="text" class="form-control" id="verificationCode" placeholder="Enter code">
+            <div id="verificationMsg" class="mt-2"></div>
+          </div>
+          <div class="mb-3">
+            <label for="editPhone" class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="editPhone" value="{{this.phone_num}}" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+````
+
+**Changes:**
+- Email field now has a "Send Code" button next to it
+- Verification code input field appears below the email (hidden by default with `display: none`)
+- Message area for verification feedback
+- Verification container will show when user clicks "Send Code"
+
+JYJY-UCB: In the modal, space the send code button and input field appropriately
+
+GitHub Copilot: I'll help you space the send code button and input field in the modal. Let me first examine the current profile.hbs file to see the modal structure. 
+
+Read [](file:///home/niruase/group-project-03/ProjectSourceCode/src/views/pages/profile.hbs)
+
+I can see the modal with the email input field and "Send Code" button. They're currently in a flex container with `gap-2`, but they need better spacing. Let me update the styling to properly space these elements. 
+
+Using "Replace String in File"
+
+
+```
+
+```
+Done! I've updated the modal to improve the spacing between the email input field and the "Send Code" button by:
+
+1. Increasing the gap from `gap-2` to `gap-3` for better horizontal spacing
+2. Adding `white-space: nowrap;` to the button to keep the text on one line and prevent layout shifts
+
+The elements now have more breathing room while maintaining proper alignment in the flex container.
+
+Made changes.
+
+JYJY-UCB: I have edited the code. Respace the send button where it is now.
+
+GitHub Copilot: Let me check the current state of the file to see where the send button is now. 
+
+Read [](file:///home/niruase/group-project-03/ProjectSourceCode/src/views/pages/profile.hbs)
+
+I can see the send button is now in the verification code section. Let me add proper spacing for it: 
+
+Using "Replace String in File"
+
+
+```
+
+```
+Done! I've updated the spacing for the send code button in its new location. The input field and button are now in a flex container with `gap-3` for proper spacing, and they'll display side by side with good breathing room between them.
+
+Made changes.
+
+JYJY-UCB: Also, for the profile page (non-modal), change it from using separate cards for profile lines to using horizontal line separators
+
+GitHub Copilot: I'll update the profile page to use horizontal line separators instead of separate cards. Let me modify the structure: 
+
+Using "Replace String in File"
+
+
+```
+
+```
+Done! I've updated the profile page to use horizontal line separators (`border-bottom`) instead of separate cards. The profile information is now displayed with cleaner spacing and dividers between each field.
+
+Made changes.
+
+JYJY-UCB: Make the font of the labels a bit more visible
+
+GitHub Copilot: I'll make the labels more visible by adjusting their styling: 
+
+Using "Replace String in File"
+
+
+```
+
+```
+Done! I've added `fw-600` (font-weight: 600) to the labels to make them bolder and more visible.
+
+Made changes.
+
+JYJY-UCB: That didn't do anything?
+
+GitHub Copilot: 
+
+JYJY-UCB: @agent Try Again
+
+GitHub Copilot: Let me check the current file to see what's there: 
+
+Read [](file:///home/niruase/group-project-03/ProjectSourceCode/src/views/pages/profile.hbs)
+
+The `fw-600` class was added, but it might not be defined in your Bootstrap version or CSS. Let me use a stronger approach by changing the `<small>` tags to `<strong>` or adding inline styling: 
+
+Using "Replace String in File"
+
+
+```
+
+```
+Done! I've changed the labels from `<small>` tags to `<strong>` tags, which will make them significantly more visible with bold text and normal size instead of small text.
+
+Made changes.
+
+JYJY-UCB: Add a small text note after the verification code field to say the email that the code will be sent to.
+
+GitHub Copilot: I'll add a note to display the email address where the verification code will be sent: 
+
+Using "Replace String in File"
+
+
+```
+
+```
+Done! I've added a small text note below the verification code field that displays "Code will be sent to [email]" using the user's current email address.
+
+Made changes.
