@@ -1,8 +1,3 @@
-<style>
-  .verification-step { display: none; }
-  .verification-step.active { display: block; }
-</style>
-
 <main class="container-fluid py-5">
   <div class="row justify-content-center">
     <div class="col-12">
@@ -11,29 +6,22 @@
           <h5 class="mb-0">Profile</h5>
         </div>
         <div class="card-body">
-          <div class="row g-3 mb-3">
-            <div class="col-12">
-              <div class="p-3 bg-light rounded border">
-                <small class="text-muted d-block mb-2">Username</small>
-                <span class="fw-500">{{this.username}}</span>
-              </div>
-            </div>
-            <div class="col-12">
-              <div class="p-3 bg-light rounded border">
-                <small class="text-muted d-block mb-2">Email</small>
-                <span class="fw-500">{{this.email}}</span>
-              </div>
-            </div>
-            <div class="col-12">
-              <div class="p-3 bg-light rounded border">
-                <small class="text-muted d-block mb-2">Phone</small>
-                <span class="fw-500">{{this.phone_num}}</span>
-              </div>
-            </div>
+          <div class="mb-3 pb-3 border-bottom">
+            <strong class="text-muted d-block mb-2">Username</strong>
+            <span class="fw-500">{{this.username}}</span>
+          </div>
+          <div class="mb-3 pb-3 border-bottom">
+            <strong class="text-muted d-block mb-2">Email</strong>
+            <span class="fw-500">{{this.email}}</span>
+          </div>
+          <div class="mb-3">
+            <strong class="text-muted d-block mb-2">Phone</strong>
+            <span class="fw-500">{{this.phone_num}}</span>
           </div>
 
-          <div class="d-flex gap-2">
-            <button type="button" class="btn btn-primary flex-grow-1" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</button>
+          <div class="d-flex gap-2 mt-4">
+            <button type="button" class="btn btn-primary flex-grow-1" data-bs-toggle="modal"
+              data-bs-target="#editProfileModal">Edit Profile</button>
           </div>
         </div>
       </div>
@@ -57,11 +45,23 @@
           </div>
           <div class="mb-3">
             <label for="editEmail" class="form-label">Email</label>
-            <input type="email" class="form-control" id="editEmail" value="{{this.email}}" required>
+            <div class="d-flex gap-3">
+              <input type="email" class="form-control" id="editEmail" value="{{this.email}}" required>
+            </div>
           </div>
           <div class="mb-3">
             <label for="editPhone" class="form-label">Phone</label>
             <input type="tel" class="form-control" id="editPhone" value="{{this.phone_num}}" required>
+          </div>
+          <div class="mb-3" id="verificationCodeContainer">
+            <label for="verificationCode" class="form-label">Verification Code</label>
+            <div class="d-flex gap-3">
+              <input type="text" class="form-control" id="verificationCode" placeholder="Enter code">
+              <button type="button" class="btn btn-outline-primary" id="sendVerificationBtn"
+                style="white-space: nowrap;">Send Code</button>
+            </div>
+            <small class="text-muted d-block mt-2">Code will be sent to {{this.email}}</small>
+            <div id="verificationMsg" class="mt-2"></div>
           </div>
         </form>
       </div>
