@@ -1,0 +1,38 @@
+## What's Changed
+* Database setup by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/22
+* Feature password hashing and backend code for rendering register page by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/23
+* login nodejs done by @HaydenLeovy in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/24
+* Partial Implementation by @ShonButz in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/25
+* leave review backend by @HaydenLeovy in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/31
+* Feature delete reviews / Feature logout by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/29
+* Page Implementation by @ShonButz in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/54
+* View my reviews page fetches reviews written by a user and displays them by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/55
+* Got login and register pages working by @HaydenLeovy in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/56
+* Integrate by @HaydenLeovy in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/57
+* Working code pushed from testing by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/58
+* Making sure testing branch is up to date by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/61
+* Error Message Back-end/Front-end by @ShonButz in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/62
+* Lab 10 by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/63
+* Feature view my reviews by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/66
+* Leave review page by @HaydenLeovy in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/68
+* Feature delete reviews by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/69
+* All review code integrated and leave review looks nice by @HaydenLeovy in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/72
+* Discovery page by @JYJY-UCB in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/73
+* Revert "Discovery page" by @HaydenLeovy in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/74
+* Status banners added to leave review. by @HaydenLeovy in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/77
+* Logout page complete by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/76
+* Email Verification (this sucked) by @ShonButz in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/78
+* Revert "Email Verification (this sucked)" by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/79
+* Same as the last one, but works with everything else by @ShonButz in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/80
+* Merging testing into main for week 3 by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/82
+* Payment verification fixed by @Dtate21 in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/83
+* Merging payment feature into main by @sashiwolf in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/84
+
+## New Contributors
+* @sashiwolf made their first contribution in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/22
+* @HaydenLeovy made their first contribution in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/24
+* @ShonButz made their first contribution in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/25
+* @JYJY-UCB made their first contribution in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/73
+* @Dtate21 made their first contribution in https://github.com/CU-CSCI3308-Fall2025/group-project-03/pull/83
+
+**Full Changelog**: https://github.com/CU-CSCI3308-Fall2025/group-project-03/commits/release_week_3

@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS listings (
   price NUMERIC(10,2),
   category VARCHAR(50),
   image_url TEXT,
-  contact_info VARCHAR(100)
+  contact_info VARCHAR(100),
+  is_sold BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- USERS_TO_LISTINGS TABLE
@@ -40,4 +41,20 @@ CREATE TABLE IF NOT EXISTS reviews_to_user (
   reviewer_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE, -- author
   reviewee_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE, -- recipient
   CONSTRAINT reviewer_ne_reviewee CHECK (reviewer_id <> reviewee_id)
+);
+
+-- BANNED_USERS TABLE
+
+CREATE TABLE IF NOT EXISTS banned_users (
+  user_id SERIAL PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  phone_num VARCHAR(20) UNIQUE NOT NULL
+);
+
+-- CATEGORY TABLE
+CREATE TABLE IF NOT EXISTS category(
+  CATEGORY_ID SERIAL PRIMARY KEY,
+  categorys VARCHAR(50) 
+  
 );

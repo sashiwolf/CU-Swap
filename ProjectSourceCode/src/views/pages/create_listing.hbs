@@ -1,0 +1,57 @@
+<style>
+  /* Box that centers the form on the page */
+  .listing-form-wrapper {
+    display: flex;
+    justify-content: center;
+    margin: 40px auto;
+  }
+
+  /* The actual card/box */
+  .listing-card {
+    width: 100%;
+    max-width: 520px;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+    border: 1px solid #e5e7eb;
+  }
+
+  /* Optional: space out fields nicely inside the card */
+  .listing-card form > * {
+    display: block;
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .listing-card label {
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .listing-card button[type="submit"] {
+    width: auto;
+    margin-left: auto;
+  }
+</style>
+
+<div class="listing-form-wrapper">
+  <div class="listing-card">
+
+    <form action="/create_listing" method="POST">
+      <input type="text" name="title" placeholder="Title">
+      <input type="text" name="description" placeholder="Description">
+      <input type="number" step="0.01" name="price" placeholder="Price">
+      <label for="category">Category</label>
+      <select id="category" name="category" required>
+        <option value="">Select a category</option>
+        {{#each categories}}
+          <option value="{{this.category}}">{{this.category}}</option>
+        {{/each}}
+      </select>
+      <input type="text" name="image_url" placeholder="Image URL">
+      <button type="submit">Submit</button>
+    </form>
+  </div>
+</div>
