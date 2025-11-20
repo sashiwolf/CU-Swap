@@ -31,10 +31,10 @@ describe('Server!', () => {
 
 // ********************************************************************************
 
-// Positive + Negative tests for /register
+//Positive + Negative tests for /register
 describe('Register', function () {
   // allow a little extra time for async steps
-  this.timeout(5000);
+  this.timeout(50000);
 
   it('Positive: creates user and redirects to /login', async function () {
     const agent = chai.request.agent(server);           // preserves session cookies

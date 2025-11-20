@@ -10,6 +10,7 @@ INSERT INTO users (username, password, email, phone_num, role) VALUES
   ('user4', crypt('Password1!', gen_salt('bf')), 'mnop3456@colorado.edu', '4444444400', 'user'),
   ('user5', crypt('Password1!', gen_salt('bf')), 'qrst7890@colorado.edu', '5555555500', 'user'),
   ('user6', crypt('Password1!', gen_salt('bf')), 'uvwx2345@colorado.edu', '6666666600', 'user');
+  ('seedmod', crypt('Password1!', gen_salt('bf')), 'mods8305@colorado.edu', '2222222201', 'moderator');
 
 
 
@@ -202,3 +203,13 @@ ids AS (
 INSERT INTO reviews_to_user (review_id, reviewer_id, reviewee_id)
 SELECT r5.review_id, ids.reviewer_id, ids.reviewee_id FROM r5, ids;
 
+
+--insert categorys for items into categorys table
+INSERT INTO category (categorys) VALUES ('School Supplies');
+INSERT INTO category (categorys) VALUES ('Electronics');
+INSERT INTO category (categorys) VALUES ('Furniture');
+INSERT INTO category (categorys) VALUES ('Clothing');
+INSERT INTO category (categorys) VALUES ('Transportation');
+INSERT INTO category (categorys) VALUES ('Tickets');
+INSERT INTO category (categorys) Values ('Free');
+INSERT INTO category (categorys) VALUES ('Miscellaneous');
