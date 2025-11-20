@@ -102,12 +102,15 @@ db.connect()
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,          // STARTTLS
-  secure: false,      // must be false for port 587
+  secure: false,      // must be false for 587
   requireTLS: true,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.EMAIL_USER,   
+    pass: process.env.EMAIL_PASS,   
   },
+  connectionTimeout: 15000,
+  greetingTimeout: 10000,
+  socketTimeout: 20000,
 });
 
 transporter.verify(err => {
