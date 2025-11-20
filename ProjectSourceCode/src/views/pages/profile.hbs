@@ -1,0 +1,148 @@
+<main class="container-fluid py-5">
+  <div class="row justify-content-center">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">Profile</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3 pb-3 border-bottom">
+            <strong class="text-muted d-block mb-2">Username</strong>
+            <span class="fw-500">{{this.username}}</span>
+          </div>
+          <div class="mb-3 pb-3 border-bottom">
+            <strong class="text-muted d-block mb-2">Email</strong>
+            <span class="fw-500">{{this.email}}</span>
+          </div>
+          <div class="mb-3 pb-3 border-bottom">
+            <strong class="text-muted d-block mb-2">Phone</strong>
+            <span class="fw-500">{{this.phone_num}}</span>
+          </div>
+          <div class="mb-3">
+            <strong class="text-muted d-block mb-2">Password</strong>
+            <!-- We never show the real password, just mask it -->
+            <span class="fw-500">********</span>
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button
+              type="button"
+              class="btn btn-primary flex-grow-1"
+              data-bs-toggle="modal"
+              data-bs-target="#editProfileModal">
+              Edit Profile
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- You can add action/method here if you want normal form submit -->
+        <form id="editProfileForm" action="/profile" method="POST">
+          <div class="mb-3">
+            <label for="editUsername" class="form-label">Username</label>
+            <input
+              type="text"
+              class="form-control"
+              id="editUsername"
+              name="username"
+              value="{{this.username}}"
+              required>
+          </div>
+
+          <div class="mb-3">
+            <label for="editEmail" class="form-label">Email</label>
+            <input
+              type="email"
+              class="form-control"
+              id="editEmail"
+              name="email"
+              value="{{this.email}}"
+              readonly>
+            <small class="text-muted">
+              Email cannot be changed. Contact support if this is incorrect.
+            </small>
+          </div>
+
+          <div class="mb-3">
+            <label for="editPhone" class="form-label">Phone</label>
+            <input
+              type="tel"
+              class="form-control"
+              id="editPhone"
+              name="phone_num"
+              value="{{this.phone_num}}"
+              pattern="\+\d{11,15}"
+              required>
+          </div>
+
+          <hr class="my-3">
+
+          <div class="mb-3">
+            <label for="currentPassword" class="form-label">
+              Current Password <span class="text-danger">*</span>
+            </label>
+            <input
+              type="password"
+              class="form-control"
+              id="currentPassword"
+              name="currentPassword"
+              required>
+            <small class="text-muted">
+              Enter your current password to verify and save any changes.
+            </small>
+          </div>
+
+          <div class="mb-3">
+            <label for="newPassword" class="form-label">New Password</label>
+            <input
+              type="password"
+              class="form-control"
+              id="newPassword"
+              name="newPassword">
+            <small class="text-muted">
+              Leave blank if you do not want to change your password.
+            </small>
+          </div>
+
+          <div class="mb-3">
+            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+            <input
+              type="password"
+              class="form-control"
+              id="confirmPassword"
+              name="confirmPassword">
+          </div>
+
+          <!-- Optional area to show validation / error messages -->
+          <div id="profileEditMsg" class="mt-2"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="btn btn-primary"
+          form="editProfileForm">
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
