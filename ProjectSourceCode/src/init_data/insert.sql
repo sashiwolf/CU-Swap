@@ -1,5 +1,4 @@
 -- Enable bcrypt for seeding only (so we can insert plain passwords here)
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- =========================
 -- Users (password = Password1!)
