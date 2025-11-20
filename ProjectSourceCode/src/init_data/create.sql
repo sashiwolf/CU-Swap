@@ -58,16 +58,3 @@ CREATE TABLE IF NOT EXISTS category(
   categorys VARCHAR(50) 
   
 );
-
---insert categorys for items into categorys table
-INSERT INTO category (categorys) VALUES ('School Supplies');
-INSERT INTO category (categorys) VALUES ('Electronics');
-INSERT INTO category (categorys) VALUES ('Furniture');
-INSERT INTO category (categorys) VALUES ('Clothing');
-INSERT INTO category (categorys) VALUES ('Transportation');
-INSERT INTO category (categorys) VALUES ('Tickets');
-INSERT INTO category (categorys) Values ('Free');
-INSERT INTO category (categorys) VALUES ('Miscellaneous');
-
-INSERT INTO users (username, password, email, phone_num, role) VALUES
-('seedmod', crypt('Password1!', gen_salt('bf')), 'mods8305@colorado.edu', '2222222201', 'moderator');
