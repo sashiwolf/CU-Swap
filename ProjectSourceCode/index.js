@@ -373,6 +373,176 @@ app.get('/profile', async (req, res) => {
   }
 });
 
+// Profile update
+app.post('/profile', async (req, res) => {
+  try {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+
+    const userId = req.session.user.user_id;
+
+    const {
+      username,
+      phone_num,
+      currentPassword,
+      newPassword,
+      confirmPassword
+    } = req.body;
+
+    // 1. Load current user from DB (including password hash)
+    const currentUser = await db.one(
+      `SELECT user_id, username, email, phone_num, password
+       FROM users
+       WHERE user_id = $1`,
+      [userId]
+    );
+
+    // 2. Verify current password
+    const match = await bcrypt.compare(currentPassword, currentUser.password);
+    if (!match) {
+      // Password wrong – re-render profile with error
+      return res.status(400).render('pages/profile', {
+        ...currentUser,
+        error: 'Current password is incorrect.'
+      });
+    }
+
+      // ===== USERNAME UNIQUENESS CHECK =====
+    if (username && username !== currentUser.username) {
+      const existingUser = await db.oneOrNone(
+        `SELECT 1 FROM users
+         WHERE username = $1
+           AND user_id <> $2`,
+        [username, userId]
+      );
+
+      if (existingUser) {
+        return res.status(400).render('pages/profile', {
+          username: currentUser.username,
+          email: currentUser.email,
+          phone_num: currentUser.phone_num,
+          error: 'That username is already taken. Please choose another one.'
+        });
+      }
+    }
+    // ===== END USERNAME CHECK =====
+
+    // ===== PHONE UNIQUENESS CHECK =====
+    if (phone_num && phone_num !== currentUser.phone_num) {
+      const existingPhone = await db.oneOrNone(
+        `SELECT 1 FROM users
+         WHERE phone_num = $1
+           AND user_id <> $2`,
+        [phone_num, userId]
+      );
+
+      if (existingPhone) {
+        return res.status(400).render('pages/profile', {
+          username: currentUser.username,
+          email: currentUser.email,
+          phone_num: currentUser.phone_num,
+          error: 'That phone number is already associated with another account.'
+        });
+      }
+    }
+    // ===== END PHONE CHECK =====
+
+    // 3. Validate new password if provided
+    let newHashedPassword = null;
+    if (newPassword && newPassword.trim() !== '') {
+      if (newPassword !== confirmPassword) {
+        return res.status(400).render('pages/profile', {
+          ...currentUser,
+          error: 'New password and confirm password do not match.'
+        });
+      }
+
+      const saltRounds = 10;
+      newHashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    }
+
+    // 4. Determine what changed (for UPDATE + email)
+    const fields = [];
+    const values = [];
+    const changes = [];
+
+    let paramIndex = 1; // we’ll build "SET col = $1, col2 = $2" etc
+
+    // Username changed?
+    if (username && username !== currentUser.username) {
+      fields.push(`username = $${paramIndex++}`);
+      values.push(username);
+      changes.push(`Username: "${currentUser.username}" → "${username}"`);
+    }
+
+    // Phone changed?
+    if (phone_num && phone_num !== currentUser.phone_num) {
+      fields.push(`phone_num = $${paramIndex++}`);
+      values.push(phone_num);
+      changes.push(`Phone: "${currentUser.phone_num}" → "${phone_num}"`);
+    }
+
+    // Password changed?
+    if (newHashedPassword) {
+      fields.push(`password = $${paramIndex++}`);
+      values.push(newHashedPassword);
+      changes.push('Password: updated');
+    }
+
+    // If nothing actually changed, just redirect back
+    if (fields.length === 0) {
+      return res.redirect('/profile');
+    }
+
+    // 5. Build and run UPDATE query
+    const updateQuery = `
+      UPDATE users
+      SET ${fields.join(', ')}
+      WHERE user_id = $${paramIndex}
+      RETURNING user_id, username, email, phone_num;
+    `;
+    values.push(userId);
+
+    const updatedUser = await db.one(updateQuery, values);
+
+    // 6. Update session user
+    req.session.user = {
+      ...req.session.user,
+      username: updatedUser.username,
+      email: updatedUser.email,
+      phone_num: updatedUser.phone_num
+      // you can also store password hash again if you want,
+      // but usually you don't need it in session
+    };
+
+    // 7. Send email about the changes
+    const changesText = changes.map(c => `• ${c}`).join('\n');
+
+    await transporter.sendMail({
+      from: '"CU Swap" <no-reply@cuswap.com>',
+      to: updatedUser.email,
+      subject: 'Your CU Swap profile was updated',
+      text: `Hi ${updatedUser.username},
+
+The following changes were made to your CU Swap profile:
+
+${changesText}
+
+If you did not make these changes, please contact support immediately.
+
+– CU Swap Team`
+    });
+
+    // 8. Redirect back to profile
+    res.redirect('/profile');
+  } catch (err) {
+    console.error('Profile update error:', err);
+    res.status(500).render('pages/error', { error: 'Could not update profile.' });
+  }
+});
+
+
 // Logout
 app.get('/logout', (req, res) => {
   req.session.destroy(err => {
