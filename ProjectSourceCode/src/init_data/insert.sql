@@ -201,14 +201,3 @@ ids AS (
 )
 INSERT INTO reviews_to_user (review_id, reviewer_id, reviewee_id)
 SELECT r5.review_id, ids.reviewer_id, ids.reviewee_id FROM r5, ids;
-
-
---insert categorys for items into categorys table
-INSERT INTO category (categorys) VALUES ('School Supplies');
-INSERT INTO category (categorys) VALUES ('Electronics');
-INSERT INTO category (categorys) VALUES ('Furniture');
-INSERT INTO category (categorys) VALUES ('Clothing');
-INSERT INTO category (categorys) VALUES ('Transportation');
-INSERT INTO category (categorys) VALUES ('Tickets');
-INSERT INTO category (categorys) Values ('Free');
-INSERT INTO category (categorys) VALUES ('Miscellaneous');

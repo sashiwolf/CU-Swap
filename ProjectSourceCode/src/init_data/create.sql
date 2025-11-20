@@ -61,9 +61,12 @@ CREATE TABLE IF NOT EXISTS category(
   
 );
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 INSERT INTO users (username, password, email, phone_num, role) VALUES
 ('seedmod', crypt('Password1!', gen_salt('bf')), 'mods8305@colorado.edu', '2222222201', 'moderator');
 
+--insert categorys for items into categorys table
 INSERT INTO category (categorys) VALUES ('School Supplies');
 INSERT INTO category (categorys) VALUES ('Electronics');
 INSERT INTO category (categorys) VALUES ('Furniture');
