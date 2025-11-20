@@ -687,7 +687,7 @@ app.engine(
     "hbs",
     exphbs.engine({
       extname: ".hbs",
-      layoutsDir: path.join(__dirname, "views/layouts"),
+      layoutsDir: path.join(__dirname, "views/Layouts"),
       defaultLayout: "main",
       partialsDir: path.join(__dirname, "views/partials"),
       helpers: {
@@ -1289,7 +1289,7 @@ app.engine(
   "hbs",
   exphbs.engine({
     extname: ".hbs",
-    layoutsDir: path.join(__dirname, "src/views/layouts"),
+    layoutsDir: path.join(__dirname, "src/views/Layouts"),
     defaultLayout: "main",
     partialsDir: path.join(__dirname, "src/views/partials"),
     helpers: {
