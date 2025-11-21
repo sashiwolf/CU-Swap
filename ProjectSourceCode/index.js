@@ -104,15 +104,16 @@ db.connect()
 }
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,         // Render can block 465; 587 uses STARTTLS
-  secure: false,
-  requireTLS: true,
+  service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    type: "OAuth2",
+    user: "cu.swap25@gmail.com",
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
   },
 });
+
 
 transporter.verify(err => {
   if (err) console.error('Mail transporter error:', err);
