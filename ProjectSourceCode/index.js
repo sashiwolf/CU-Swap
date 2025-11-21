@@ -99,8 +99,14 @@ db.connect()
     console.log('ERROR:', error.message || error);
   });
 
-  const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  console.error('Missing email credentials in environment');
+}
+
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -519,7 +525,7 @@ app.post('/profile', async (req, res) => {
     const changesText = changes.map(c => `• ${c}`).join('\n');
 
     await transporter.sendMail({
-      from: '"CU Swap" <no-reply@cuswap.com>',
+      from: `"CU Swap" <${process.env.EMAIL_USER}>`,
       to: updatedUser.email,
       subject: 'Your CU Swap profile was updated',
       text: `Hi ${updatedUser.username},
@@ -1242,7 +1248,7 @@ app.post('/listings/:id/admin_delete', requireModerator, async (req, res) => {
 
     // 3. Email the owner
     await transporter.sendMail({
-      from: '"CU Swap" <no-reply@cuswap.com>',
+      from: `"CU Swap" <${process.env.EMAIL_USER}>`,
       to: listing.email,
       subject: 'Your CU Swap listing was removed',
       text: `Hi,
