@@ -1,5 +1,21 @@
 {{!< main }}
 
+<style>
+  .create-listing-black {
+  background-color: #000 !important; /* black */
+  color: #fff !important;            /* white text */
+  border: none;
+}
+
+/* hover + focus */
+.create-listing-black:hover,
+.create-listing-black:focus {
+  background-color: #cfb87c !important; /* gold */
+  color: #000 !important;               /* black text */
+}
+
+</style>
+
 <main>
   <div class="container py-4">
     <!-- Filter + Create Listing bar -->
@@ -16,11 +32,10 @@
         </select>
       </form>
 
-      <a href="/create_listing" class="btn btn-primary btn-sm ms-auto">
+      <a href="/create_listing" class="btn btn-primary btn-sm ms-auto create-listing-black">
         Create Listing
       </a>
     </div>
-
     <!-- Optional notice -->
     {{#if notice}}
       <div class="alert alert-warning">
