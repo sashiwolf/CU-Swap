@@ -1,3 +1,20 @@
+<style>
+  .create-listing-black {
+  background-color: #000 !important; /* black */
+  color: #fff !important;            /* white text */
+  border: none;
+}
+
+/* hover + focus */
+.create-listing-black:hover,
+.create-listing-black:focus {
+  background-color: #cfb87c !important; /* gold */
+  color: #000 !important;               /* black text */
+}
+
+</style>
+
+
 <main class="container-fluid py-5">
   <div class="row justify-content-center">
     <div class="col-12">
@@ -27,7 +44,7 @@
           <div class="d-flex gap-2 mt-4">
             <button
               type="button"
-              class="btn btn-primary flex-grow-1"
+              class="btn btn-primary flex-grow-1 create-listing-black"
               data-bs-toggle="modal"
               data-bs-target="#editProfileModal">
               Edit Profile
