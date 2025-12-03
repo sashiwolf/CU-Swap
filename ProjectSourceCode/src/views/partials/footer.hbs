@@ -8,6 +8,11 @@
     display: flex;
     flex-direction: column;
   }
+  main {
+    flex: 1;                /* grow to push footer down */
+    display: flex;
+    flex-direction: column;
+  }
 
 .cu-footer {
   background: #000;
@@ -16,6 +21,7 @@
   padding: 1.25rem 0;      /* 20px-ish */
   position: relative;
   font-size: 1.05rem;
+  margin-top: auto;         /* stick to bottom when page is short */
 }
 
 /* Gold bar at top */
