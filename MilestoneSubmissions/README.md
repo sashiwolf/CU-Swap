@@ -36,7 +36,7 @@ You will need the package for node.js, node mailer, and docker
 
 ## Running the Application Locally
 
-After cloning the repository you can cd into the Projectresources file then Docker compose up --build and then open it locally at localhost:3000
+After cloning the repository you can cd into the ProjectSourceCode file then Docker compose up --build and then open it locally at localhost:3000
 
 ## Running Tests
 
