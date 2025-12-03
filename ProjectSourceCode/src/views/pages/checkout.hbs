@@ -48,7 +48,7 @@
       }
 
       const data = await res.json();
-      return data.clientSecret;
+      return data;
     }
 
     async function handlePayment() {
@@ -58,7 +58,18 @@
       errorEl.textContent = "";
 
       try {
-        const clientSecret = await createPaymentIntent();
+        const intent = await createPaymentIntent();
+
+        // Free listing: no Stripe payment required.
+        if (intent.free) {
+          statusEl.textContent = "No payment needed for a free item. Completing order…";
+          statusEl.className = "mt-3 small text-success";
+          const redirectUrl = intent.redirectUrl || ("/success?sellerId=" + encodeURIComponent(sellerAccountId) + "&payment_intent=free");
+          window.location.href = redirectUrl;
+          return;
+        }
+
+        const clientSecret = intent.clientSecret;
         const result = await stripe.confirmCardPayment(clientSecret, {
           payment_method: { card }
         });

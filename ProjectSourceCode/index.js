@@ -912,10 +912,11 @@ app.engine(
   app.get("/", (req, res) => {
     res.redirect("/checkout");
   });
- // checkout page - optionally tied to a specific listing
+// checkout page - optionally tied to a specific listing
   app.get("/checkout", async (req, res) => {
     const currency = "usd";
-    let amount = 2000;
+    // Default demo values; will be overridden when a valid listing is provided.
+    let amount = 0;
     let description = "Demo item description";
     let itemTitle = "Demo item";
     let sellerAccountId = DEMO_SELLER_ACCOUNT_ID;
@@ -924,7 +925,9 @@ app.engine(
     const buyerId = req.session.user?.user_id || null;
 
     const listingId = Number(req.query.listingId);
-    if (Number.isInteger(listingId)) {
+    const hasListingId = Number.isInteger(listingId);
+
+    if (hasListingId) {
       try {
         const listing = await db.oneOrNone(
           `
@@ -953,9 +956,9 @@ app.engine(
             return res.redirect('/discover?sold=1');
           }
           const priceNumber = Number(listing.price);
-          if (!Number.isNaN(priceNumber) && priceNumber > 0) {
-            amount = Math.round(priceNumber * 100);
-          }
+          amount = !Number.isNaN(priceNumber) && priceNumber > 0
+            ? Math.round(priceNumber * 100)
+            : 0;
 
           itemTitle = listing.title || itemTitle;
           description = listing.description || `Purchase of ${listing.title || 'listing'}`;
@@ -970,6 +973,11 @@ app.engine(
       } catch (err) {
         console.error("Error loading listing for checkout:", err);
       }
+    }
+
+    // If no valid listing is provided, keep a small demo amount for testing.
+    if (!hasListingId && amount === 0) {
+      amount = 2000;
     }
 
     req.session.checkout = {
@@ -996,6 +1004,8 @@ app.engine(
       const {amount, currency, sellerAccountId } = req.body;
       const listingId = req.session.checkout?.listingId;
       const buyerId = req.session.user?.user_id || null;
+      const checkoutContext = req.session.checkout || {};
+      const sellerUserId = checkoutContext.sellerUserId || null;
 
       if(!sellerAccountId)
       {
@@ -1020,6 +1030,13 @@ app.engine(
           return res.status(409).json({ error: "This item has already been purchased." });
         }
       }
+
+      // If the item is free, skip Stripe and go straight to success.
+      if (!amount || Number(amount) <= 0) {
+        const redirectUrl = `/success?sellerId=${encodeURIComponent(sellerUserId || '')}&payment_intent=free`;
+        return res.json({ free: true, redirectUrl });
+      }
+
       const paymentIntent = await stripe.paymentIntents.create(
         {
           amount, 
